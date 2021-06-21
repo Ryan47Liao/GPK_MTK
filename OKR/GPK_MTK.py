@@ -178,15 +178,11 @@ class MTK:
         return Request(method = "POST", url = f"https://www.meistertask.com/api/projects/{project_id}/sections",
                                 headers = headers ,params = {},data = data).json()
  
-        
-
-
-# In[166]:
-
 
 class GPK_MTK(MTK):
     def __init__(self,token = None,project_id=None):
         self.SECTIONs = {}
+        self.SEC_Labs = {}
         MTK.__init__(self,token = token, project_id = None ,info_show = False)
         if "__Created" not in self.__dict__ and project_id is None:
             print("CREATING PROJECT")
@@ -228,7 +224,7 @@ class GPK_MTK(MTK):
                    data = json.dumps({'name':sec ,'color':Color_code[sec]},indent=4),
                     headers = self.Get_Header("Post","32")) #Create Corresponding Label
             Response_Pass(label)
-            self.Sec_Labs[sec] = label.json['id']
+            self.SEC_Labs[sec] = label.json()['id']
             print(f"Section {sec} Initialized with color {Color_code[sec]}")
         #Enable Features:
         for feature in features:
@@ -276,9 +272,8 @@ class GPK_MTK(MTK):
 
 
 if __name__ == '__main__': #Main Project 4963813
-    TEST = GPK_MTK('u1IqrMvqjFA99sNL9_RnipaYnXKd9cc7wUZXHCUhJ-I','4963813')
+    TEST = GPK_MTK('zMruEfyp-ECixuwC1uhfEc9i4s1Bvhb2n7tyY6FO4EI','6245327')
     TEST.Sync()
     TEST.SEC_task.keys()
-    TEST.View_df('Planed_Today').head(100)
+    #print(TEST.View_df('Planed_Today'))
     print('done')
-
