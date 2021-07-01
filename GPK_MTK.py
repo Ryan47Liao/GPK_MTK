@@ -8,6 +8,7 @@ import requests
 import json
 import datetime
 import pandas as pd
+from IPython.core.display import display
 
 
 # In[2]:
@@ -54,7 +55,7 @@ class MTK:
             self.info()
         
     def set_token(self,token):
-        self.__token = token 
+        self.__token = token
         self.headers_get =  self.Get_Header()
         self.headers_post = self.Get_Header('Post')
         
@@ -188,10 +189,16 @@ class GPK_MTK(MTK):
             print("CREATING PROJECT")
             self.RESET()
         else:
-            self.project_id = project_id
-            self.Get_info() #Collect Info about the account 
+            try:
+                project_id = int(project_id)
+                self.project_id = project_id
+            except:
+                self.project_id = None 
+            finally:
+                self.Get_info() #Collect Info about the account 
+
         
-    def RESET(self,sections = ['Upcoming','In Progress','Done Today','Personal Dev',
+    def RESET(self,name = 'MTK_OKR', sections = ['Upcoming','In Progress','Done Today','Personal Dev',
                               'Carrer','Health','Family','Other'], 
               colors = ['orange','red','grass green','turquoise','purple','grass green',
                        'orange','blue'],
@@ -215,9 +222,9 @@ class GPK_MTK(MTK):
             
         Color = Color_Labels()
         Color_code = Color.Pair_color(sections,colors)
-        self.project_info = self.Post_project("MTK_OKR","Objective and KeyResults Management")
+        self.project_info = self.Post_project(name,"Objective and KeyResults Management")
         print("Project Initialized")
-        self.set_project_id(self.project_info['id'])
+        self.set_project_id(self.project_info['id']) #Set the project id to the one that's generated 
         for sec in sections:
             section = MTK.Post_section(self,sec,self.project_id) #Create Section
             label = Request(method = "Post",url = f"https://www.meistertask.com/api/projects/{self.project_id}/labels",
@@ -248,11 +255,15 @@ class GPK_MTK(MTK):
         
     def View_df(self,section):
         TEMP = {}
-        for feature in self.SEC_task[section][0].keys():
-            TEMP[feature] = []
-            for task in self.SEC_task[section]:
-                TEMP[feature].append(task[feature])
-        return pd.DataFrame(TEMP)
+        try:
+            for feature in self.SEC_task[section][0].keys():
+                TEMP[feature] = []
+                for task in self.SEC_task[section]:
+                    TEMP[feature].append(task[feature])
+            return pd.DataFrame(TEMP)
+        except KeyError as e:
+            print(e)
+        return TEMP
     
     def match_labs(self):
         Labs = self.Get_labs(self.project_id)
@@ -268,12 +279,22 @@ class GPK_MTK(MTK):
         return MTK.Post_task(self,section_id,name,notes,[self.SECTIONs_Labs[
             self.SECTIONs[section_id]
         ]],custom_fields,checklists)
+    
+    def Get_Sec_ID(self,sec_name):
+            for sec_id,sec in self.SECTIONs.items():
+                if sec == sec_name:
+                    return sec_id 
+                
+    
+        
 
 
-
+    
 if __name__ == '__main__': #Main Project 4963813
-    TEST = GPK_MTK('zMruEfyp-ECixuwC1uhfEc9i4s1Bvhb2n7tyY6FO4EI','6245327')
+    #Main Server Secrete: u1IqrMvqjFA99sNL9_RnipaYnXKd9cc7wUZXHCUhJ-I
+    #Test Server Secrete: zMruEfyp-ECixuwC1uhfEc9i4s1Bvhb2n7tyY6FO4EI
+    TEST = GPK_MTK('u1IqrMvqjFA99sNL9_RnipaYnXKd9cc7wUZXHCUhJ-I','4963813') 
     TEST.Sync()
     TEST.SEC_task.keys()
-    #print(TEST.View_df('Planed_Today'))
+    display(TEST.View_df('Planed_Today'))
     print('done')

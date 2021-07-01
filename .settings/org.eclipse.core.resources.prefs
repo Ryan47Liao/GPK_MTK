@@ -1,2 +1,7 @@
 eclipse.preferences.version=1
-encoding//OKR/GPK_MTK.py=utf-8
+encoding/GPK_GUI.py=utf-8
+encoding/GPK_MTK.py=utf-8
+encoding/GPK_PROFILE.py=utf-8
+encoding/Plan_load.py=utf-8
+encoding/RSA.py=utf-8
+encoding/gpkTask.py=utf-8
