@@ -32,23 +32,27 @@ class gpk_Shell:
             os.makedirs(self.parent_address) 
         except FileExistsError:
             pass
+
+                    
+        #_________Finally_________#
         #Fetch Cache 
-        
-        #         INfile = open( input("Save Path:\n") ,"rb")
-#         test_data = pickle.load(INfile)
-#         INfile.close()
         try:
-            INfile = open(self.parent_address + "gpk_cache" , 'rb')
-            self.cache = pickle.load(INfile)
-            INfile.close()
+            with open(self.parent_address + "gpk_cache" , 'rb') as INfile:
+                self.cache = pickle.load(INfile)                    
         except FileNotFoundError:
             self.cache = GPK_Cache(self.parent_address + "gpk_cache")
             self.cache.save() 
-            
-         
-        
-        #_________Finally_________#
+        #DRAW
         self._draw()
+        #Insert Data
+        if self.cache.Re_status():
+            print("Remembered Acc")
+            self.acc_entry.delete(0, 'end')
+            self.acc_entry.insert('0',self.cache.get_AC())   
+            self.pw_entry.delete(0, 'end')
+            self.pw_entry.insert('0',self.cache.get_PW())  
+            self.open_profile(self.cache.gpk_save_path)
+        #Finally 
         self.shell_rt.mainloop()
     
     def authenticate(self)->bool:
@@ -69,6 +73,14 @@ class gpk_Shell:
             getattr(messagebox,'showwarning')("ERROR","PING must be Digits only!") 
         "If LogIn Successful,open the Main app and destroy the login."
         if self.authenticate():
+            #If remember me is toggled 
+            if self.remember:
+                self.cache.Re_True()
+                self.cache.set_info(self.ACC,self.PW)
+                self.cache.set_save_path(self.file_path)
+            else:
+                self.cache.Re_Fal()
+            self.cache.save()
             self.shell_rt.destroy()
             #________________#
             new_root = gpk_Main(self.Profile,self.file_path)
@@ -133,10 +145,14 @@ class gpk_Shell:
     Opens an existing DSU file when the 'Open' menu item is clicked and loads the profile
     data into the UI.
     """
-    def open_profile(self):
-        filename = tk.filedialog.askopenfile(filetypes=[('Grand Peach King Profile', '*.gpk')])
-        self.file_path = filename.name
-        print(self.file_path)
+    def open_profile(self,path = None):
+        if path is None:
+            filename = tk.filedialog.askopenfile(filetypes=[('Grand Peach King Profile', '*.gpk')],
+                                                 initialdir = self.parent_address)
+            self.file_path = filename.name
+        else:
+            self.file_path = path
+        print(f"opening save at {self.file_path}")
         INfile = open( self.file_path ,"rb")
         self.Profile = pickle.load(INfile)
         INfile.close()
@@ -199,7 +215,7 @@ class gpk_Shell:
         self.login_btn.grid(row = 1, column = 4)
         
         #___________Remember_Me_Check_Box___________
-        self.remember = tk.BooleanVar(self.cache.Re_status())
+        self.remember = tk.BooleanVar(value=self.cache.Re_status())
         self.rmchbox = tk.Checkbutton(self.login_btn_frame,
                                       variable = self.remember).grid(row = 0, column = 3)
         self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 0, column = 4)
