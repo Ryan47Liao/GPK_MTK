@@ -40,4 +40,13 @@ class GPK_Cache:
         self.__remember = True  
         
     def Re_Fal(self):
-        self.__remember = False   
+        self.__remember = False  
+        
+    def Set_status(self,status):
+        status = bool(status) 
+        print(f'Setting Remember Status:{status}')
+        if status:
+            self.Re_True()
+        else:
+            self.Re_Fal()
+        self.save()

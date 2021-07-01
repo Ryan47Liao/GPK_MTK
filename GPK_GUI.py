@@ -74,8 +74,7 @@ class gpk_Shell:
         "If LogIn Successful,open the Main app and destroy the login."
         if self.authenticate():
             #If remember me is toggled 
-            if self.remember:
-                self.cache.Re_True()
+            if self.remember.get():
                 self.cache.set_info(self.ACC,self.PW)
                 self.cache.set_save_path(self.file_path)
             else:
@@ -215,9 +214,12 @@ class gpk_Shell:
         self.login_btn.grid(row = 1, column = 4)
         
         #___________Remember_Me_Check_Box___________
-        self.remember = tk.BooleanVar(value=self.cache.Re_status())
-        self.rmchbox = tk.Checkbutton(self.login_btn_frame,
-                                      variable = self.remember).grid(row = 0, column = 3)
+        self.remember = tk.IntVar()
+        self.remember.set(int(self.cache.Re_status()))
+        self.rmchbox = tk.Checkbutton(self.login_btn_frame,variable = self.remember,
+                                      onvalue=1, offvalue=0)
+        self.rmchbox.grid(row = 0, column = 3)
+        self.rmchbox.configure( command = lambda: self.cache.Set_status(self.remember.get()) )
         self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 0, column = 4)
         
         #__________Register__________________
@@ -293,6 +295,8 @@ class gpk_Main():
     def Profile_call_back(self, Profile = None, Update = False, Return = False):
         """
         Interact with subFrames and modify the Profile in the Main APP.
+        Toggle Return to Get Profile 
+        input Profile and Toggle update to update Profile
         """
         if Update:
             self.Profile = Profile #Update the Profile
@@ -312,6 +316,7 @@ class gpk_Main():
         for frame in self.FRAMES:
             if frame != exception:
                 getattr(self,frame).pack_forget()
+                
         
     
     def _draw(self):
@@ -355,10 +360,21 @@ class gpk_Main():
         
         self.gpk_okr = gpk_okr(self.gpk_main_rt)
         self.FRAMES.append("gpk_okr")
+        
+        #_________________Menu->MeisterTask Add on________________
+        MTK = tk.Menu(menu_bar) 
+        menu_bar.add_cascade(menu=MTK, label='MTK Sync')
+        MTK.add_command(label='Authentication Setting', command = lambda: self.call_frame('gpk_mtk_frame'))
+    
+        self.gpk_mtk_frame = gpk_mtk_frame(self.gpk_main_rt,call_back = self.Profile_call_back)
+        self.FRAMES.append("gpk_mtk_frame")
+        
         #_________________Menu->DashBoard________________________
         DashBoard = tk.Menu(menu_bar)#, postcommand = lambda: self.call_frame('gpk_dash_board'))
         menu_bar.add_cascade(menu=DashBoard, label='DashBoard')
         DashBoard.add_command(label='HOME', command = lambda: self.call_frame('gpk_dash_board'))
+
+        
         #++++++++++++++++++++++++++DashBoard(HOME)++++++++++++++++++++++++++++++++++++++#
         self.gpk_dash_board = gpk_dash(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
         self.gpk_dash_board.pack(fill = tk.BOTH,expand = 1)
@@ -370,7 +386,43 @@ class gpk_Main():
 
 # In[13]:
 
-
+class gpk_mtk_frame(tk.Frame):
+    def __init__(self,root,call_back=None):
+        super().__init__(bg = 'purple')
+        self.root = root
+        self.call_back = call_back 
+        self.Profile = self.call_back(Return = True)
+        self._draw()
+        
+    def _draw(self):
+        self.Key_label = tk.Label(master = self,text = 'Personal access tokens:')
+        self.Key_entry = tk.Entry(master = self)
+        self.submit_btn = tk.Button(master = self, text = 'Save', 
+                               command = lambda: self.set_token(self.Key_entry.get()) )
+        #Packing...
+        self.Key_label.pack()
+        self.Key_entry.pack()
+        self.submit_btn.pack()
+        self.update_token()
+    
+    def update_token(self):
+        self.get_token()
+        self.Key_entry.delete(0,tk.END)
+        self.Key_entry.insert(0,self.token)
+        
+    def get_token(self):
+        self.Profile = self.call_back(Return = True)
+        try:
+            self.token = self.Profile.mtk_token 
+        except AttributeError as e:
+            print("Token not found at the current profile")
+    
+    def set_token(self,token):
+        self.Profile = self.call_back(Return = True)
+        self.token = token 
+        self.Profile.mtk_token = token 
+        self.call_back(Profile = self.Profile,Update = True)
+    
 class gpk_okr(tk.Frame):
     def __init__(self,root):
         super().__init__(bg = 'black')
@@ -554,8 +606,8 @@ class gpk_to_do(tk.Frame):
         self.FrameUPPER.pack( )
         #____Tree View_Frame___
         self.tree_height_coef = 4/5 
-        self.tree_width_coef = 1/2
-        self.treeFrame = tk.Frame(master = self.FrameUPPER, bd = 10)#, bg = 'green')
+        self.tree_width_coef = 2/3
+        self.treeFrame = tk.Frame( master = self.FrameUPPER, bd = 30)#, bg = 'green')
         self.treeFrame.configure(height = self.tree_height_coef*self.height,
                                   width = self.tree_width_coef*self.width)
         self.treeFrame.grid_propagate(0)
@@ -564,7 +616,8 @@ class gpk_to_do(tk.Frame):
         self.todo_tree_update()
         #____Editing_Frame___
         self.editingFrame = tk.Frame(master = self.FrameUPPER, bd = 10)#, bg = 'Yellow')
-        self.editingFrame.configure(height = 4*self.height/5 ,width = (1-self.tree_width_coef)*self.width)
+        self.editingFrame.configure(height = 1/2*self.height ,
+                                    width = (1-self.tree_width_coef)*self.width)
         self.editingFrame.grid_propagate(0)
         self.editingFrame.pack(side = tk.LEFT)
         #
@@ -587,38 +640,37 @@ class gpk_to_do(tk.Frame):
         self.description_editor = tk.Text(self.editingFrame, width=0)
         
         
-        self.spacer = tk.Label(master = self.editingFrame, text = '')
-        if True:
-            self.spacer.grid(row = 0, pady = 120,column = 0 , columnspan = 2)
-            base = 1
-            self.Id_label.grid(padx = 5, pady = 10, row = base + 0, column = 0)
-            self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1)
-            self.name_label.grid(padx = 5, pady = 10,row = base +1, column = 0)
-            self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1)
-            self.time_label .grid(padx = 5, pady = 10,row = base +2, column = 0)
-            self.time_entry.grid(padx = 5, pady = 10,row = base +2, column = 1)
-            self.Dif_label.grid(padx = 5, pady = 10,row = base +3, column = 0)
-            self.Dif_entry.grid(padx = 5, pady = 10,row = base +3, column = 1)
-            self.deadline_label.grid(padx = 5, pady = 10,row = base +4, column = 0)
-            self.deadline_entry.grid(padx = 5, pady = 10,row = base +4, column = 1)
+        # self.spacer = tk.Label(master = self.editingFrame, text = '')
+        # self.spacer.grid(row = 0, pady = 120,column = 0 , columnspan = 2)
+        base = 1
+        self.Id_label.grid(padx = 5, pady = 10, row = base + 0, column = 0)
+        self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1)
+        self.name_label.grid(padx = 5, pady = 10,row = base +1, column = 0)
+        self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1)
+        self.time_label .grid(padx = 5, pady = 10,row = base +2, column = 0)
+        self.time_entry.grid(padx = 5, pady = 10,row = base +2, column = 1)
+        self.Dif_label.grid(padx = 5, pady = 10,row = base +3, column = 0)
+        self.Dif_entry.grid(padx = 5, pady = 10,row = base +3, column = 1)
+        self.deadline_label.grid(padx = 5, pady = 10,row = base +4, column = 0)
+        self.deadline_entry.grid(padx = 5, pady = 10,row = base +4, column = 1)
+        
+        self.description_editor_label.grid(padx = 5, pady = 15,row = base +5, column = 0)
+        self.description_editor.grid(row = base +6, column = 0, columnspan = 3, ipadx=200, pady=5)
             
-            self.description_editor_label.grid(padx = 5, pady = 15,row = base +5, column = 0)
-            self.description_editor.grid(row = base +6, column = 0, columnspan = 3, ipadx=200, pady=5)
-            
-        ###Lower Frame###
+        ###Lower Frame### (Middle) 
         self.FrameLOWER = tk.Frame(master = self, bd = 2)#, bg = 'Red')
-        self.FrameLOWER.configure(height = self.height/6 ,width = self.width)
+        self.FrameLOWER.configure(height = self.height/2 ,width = self.width)
         self.FrameLOWER.pack( )
         #____Summary_Frame___
         self.summaryFrame = tk.Frame(master = self.FrameLOWER, bd = 2)#, bg = 'Orange')
-        self.summaryFrame.configure(height = self.height/5 , width = self.tree_width_coef*self.width)
+        self.summaryFrame.configure(height = self.height/2 , width = (54/100)*self.width)
         self.summaryFrame.grid_propagate(0)
         self.summaryFrame.pack(side = tk.LEFT)
         self.todo_summary()
         
         #____Buttons_Frame___
         self.controlFrame = tk.Frame(master = self.FrameLOWER,  bd = 2)#,bg = 'Purple')
-        self.controlFrame.configure(height = self.height/5 ,width = (1-self.tree_width_coef)*self.width)
+        self.controlFrame.configure(height = self.height/2 ,width = (46/100)*self.width)
         self.controlFrame.grid_propagate(0)
         self.controlFrame.pack(side = tk.LEFT )
         # 
@@ -629,18 +681,23 @@ class gpk_to_do(tk.Frame):
         self.Add_btn = tk.Button(master =self.controlFrame, image = self.img_add, command = self.add)
         self.img_del = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/delete_task_li6_icon.ico"))
         self.Delete_btn = tk.Button(master =self.controlFrame, image = self.img_del, command = self.delete)
-        self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/complete_icon.png"))
+        self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/111.png"))
         self.Complete_btn = tk.Button(master =self.controlFrame, image  =  self.img_complete , command = self.complete)
-        if True:
-            self.spacer2.grid(padx = 160, row = 0 ,column = 0 )
-            self.Submit_btn.grid(padx = 20, row = 0, column = 3)
-            self.Add_btn.grid(padx = 20,row = 0, column = 2)
-            self.Delete_btn.grid(padx = 20,row = 0, column = 1)
-            self.Complete_btn.grid(pady = 20, ipadx  =50, row = 1, column = 1,columnspan = 3)
-
-
-# In[16]:
-
+        #Set Location for the buttons 
+        self.spacer2.grid(padx = 160, row = 0 ,column = 0 )
+        self.Submit_btn.grid(padx = 20, row = 0, column = 3)
+        self.Add_btn.grid(padx = 20,row = 0, column = 2)
+        self.Delete_btn.grid(padx = 20,row = 0, column = 1)
+        self.Complete_btn.grid(pady = 20, ipadx  =50, row = 1, column = 1,columnspan = 3)
+        
+        #Add Mtk Sync Status 
+        self.sync_status = tk.IntVar()
+        self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status,
+                                        onvalue=1, offvalue=0)
+        self.sync_chbx.grid(padx = 20,row = 2, column = 1)
+        self.rmchbox_label = tk.Label (self.controlFrame,text = "MTK SYNC")
+        self.rmchbox_label.grid(row = 2, column = 2)
+        
 
 class gpk_week(tk.Frame):
     def __init__(self,root):
