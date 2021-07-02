@@ -16,7 +16,7 @@ import Tetris
 
 from gpk_cache import GPK_Cache
 from GPK_PROFILE import *
-
+from gpk_mtk_frame import gpk_mtk_frame
 
 class gpk_Shell:
     def __init__(self):
@@ -386,43 +386,7 @@ class gpk_Main():
 
 # In[13]:
 
-class gpk_mtk_frame(tk.Frame):
-    def __init__(self,root,call_back=None):
-        super().__init__(bg = 'purple')
-        self.root = root
-        self.call_back = call_back 
-        self.Profile = self.call_back(Return = True)
-        self._draw()
-        
-    def _draw(self):
-        self.Key_label = tk.Label(master = self,text = 'Personal access tokens:')
-        self.Key_entry = tk.Entry(master = self)
-        self.submit_btn = tk.Button(master = self, text = 'Save', 
-                               command = lambda: self.set_token(self.Key_entry.get()) )
-        #Packing...
-        self.Key_label.pack()
-        self.Key_entry.pack()
-        self.submit_btn.pack()
-        self.update_token()
-    
-    def update_token(self):
-        self.get_token()
-        self.Key_entry.delete(0,tk.END)
-        self.Key_entry.insert(0,self.token)
-        
-    def get_token(self):
-        self.Profile = self.call_back(Return = True)
-        try:
-            self.token = self.Profile.mtk_token 
-        except AttributeError as e:
-            print("Token not found at the current profile")
-    
-    def set_token(self,token):
-        self.Profile = self.call_back(Return = True)
-        self.token = token 
-        self.Profile.mtk_token = token 
-        self.call_back(Profile = self.Profile,Update = True)
-    
+
 class gpk_okr(tk.Frame):
     def __init__(self,root):
         super().__init__(bg = 'black')
@@ -555,6 +519,10 @@ class gpk_to_do(tk.Frame):
         self.task_info_update() 
         #5.Update Summary
         self.todo_summary()
+        #6.If Syncing, also PUSH it to Meister Task 
+        if self.sync_status.get():
+            print("Push Task to Meister Task")
+            
         
     def delete(self):
         #1.Get ID
@@ -599,6 +567,63 @@ class gpk_to_do(tk.Frame):
                                      """.format(reward_tot,time_tot), font = 10)
         self.summary_label.grid(row = 0, column = 0, padx = 150)
     
+    def check_mtk_sync_status(self):
+        Profile = self.callback(Return = True)
+        if Profile.todos.project_id is None:
+            self.sync_status.set(0)
+            getattr(messagebox,'showwarning')("No Project Selected",
+                                          "Please Go to the 'MTK SYNC' and select [OKR_Plannng]")
+        try:
+            Profile.todos.info()
+        except: 
+            getattr(messagebox,'showwarning')("Fail to Connect",
+                                          "Internet Failure and Fail to Connect to Meistertask,\n\
+                                          please check your internet and try again later...")
+            self.sync_status.set(0)
+
+    def mtk_sync(self):
+        #
+        from GPK_PROFILE import Gpk_ToDoList
+        from gpkTask import gpk_task
+        #
+        if self.sync_status.get():
+            #Syncing with Meister Task 
+            print("Syncing with MTK")
+            #0.Fetch Profile 
+            Profile_temp = self.Main_Profile()
+            #1.Get Data Frame of Today's Plan from MTK methods 
+            #try:
+            token = Profile_temp.todos.get_token()
+            Profile_temp.todos.set_token(token)
+            df = Profile_temp.todos.Task_today()
+            #2.Modify Profile 
+            for idx in df.index:
+                row = df.loc[idx]
+                task = gpk_task(row['name'],row['notes'])
+                print(f"Adding Task: \n{task}")
+                try:
+                    ddl = row['due'].split("T")[0]
+                except AttributeError:
+                    ddl = 'None'
+                Profile_temp.todos.add(task.name,task.ID,float(task.Time),float(task.Difficulty),
+                       task.Description,ddl)
+            #3.Update Profile
+            self.callback(Profile = Profile_temp, Update = True)
+            #4.Reload Tree
+            self.todo_tree_update()
+            #5.Update Summary
+            self.todo_summary()
+                
+            #except AttributeError as e:
+                # print("You need to first Set up the MTK Token")
+                # print(e)
+                # #First Set Up The MTK 
+        else:
+            getattr(messagebox,'showwarning')("Mtk Sync Offline",
+                                              "Check the Box on the left to enable it")
+                 
+            
+                
     def _draw(self):
         ###Upper Frame###
         self.FrameUPPER = tk.Frame(master = self, bd = 20)#, bg = 'Blue')
@@ -681,7 +706,7 @@ class gpk_to_do(tk.Frame):
         self.Add_btn = tk.Button(master =self.controlFrame, image = self.img_add, command = self.add)
         self.img_del = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/delete_task_li6_icon.ico"))
         self.Delete_btn = tk.Button(master =self.controlFrame, image = self.img_del, command = self.delete)
-        self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/111.png"))
+        self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/task_complete.png"))
         self.Complete_btn = tk.Button(master =self.controlFrame, image  =  self.img_complete , command = self.complete)
         #Set Location for the buttons 
         self.spacer2.grid(padx = 160, row = 0 ,column = 0 )
@@ -693,11 +718,15 @@ class gpk_to_do(tk.Frame):
         #Add Mtk Sync Status 
         self.sync_status = tk.IntVar()
         self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status,
-                                        onvalue=1, offvalue=0)
+                                        onvalue=1, offvalue=0, command = self.check_mtk_sync_status)
         self.sync_chbx.grid(padx = 20,row = 2, column = 1)
         self.rmchbox_label = tk.Label (self.controlFrame,text = "MTK SYNC")
         self.rmchbox_label.grid(row = 2, column = 2)
-        
+        #Add Sync Button 
+        self.sync_ref_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
+        self.SYNC_btn = tk.Button(master =self.controlFrame, image  =  self.sync_ref_img , 
+                                  command = self.mtk_sync)
+        self.SYNC_btn.grid(row = 2, column = 3)
 
 class gpk_week(tk.Frame):
     def __init__(self,root):
@@ -729,9 +758,6 @@ class gpk_store(tk.Frame):
         self.Tetris_open = tk.Button(master = self, text = 'Tetris',command = self.Tetris_start)
         self.Tetris_open.pack()
 
-# In[18]:
-
-
 class gpk_analysis(tk.Frame):
     def __init__(self,root):
         super().__init__(bg = 'blue')
@@ -741,10 +767,6 @@ class gpk_analysis(tk.Frame):
     def _draw(self):
         self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_analysis')
         self.to_dos.pack()
-
-
-# In[ ]:
-
 
 if __name__ == "__main__":
     test = gpk_Shell()

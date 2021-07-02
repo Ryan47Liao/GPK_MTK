@@ -13,6 +13,7 @@ import datetime
 import copy
 from gpkTask import gpk_task
 from GPK_MTK import GPK_MTK
+from mtk_planning import GPK_MTK_Plan
 # In[10]:
 
 
@@ -29,7 +30,8 @@ class PROFILE:
         self.__RSA_init(password)
         
         #________________________Other Features__________________________#
-        self.todos = Gpk_ToDoList()
+        self.mtk_token = None 
+        self.todos = GPk_Mtk_todoList()
         self.OKR = OKR_Plan()
         self.inventory = Inventory()
         
@@ -168,10 +170,10 @@ class Gpk_ToDoList:
         self.delete(task_ID)
         
         
-class GPk_Mtk_todoList(Gpk_ToDoList,GPK_MTK):
+class GPk_Mtk_todoList(Gpk_ToDoList,GPK_MTK_Plan):
     def __init__(self,token = None,project_id=None):
         Gpk_ToDoList.__init__(self)
-        GPK_MTK.__init__(self,token = None,project_id=None)
+        GPK_MTK_Plan.__init__(self,api_token = token,project_id=project_id)
         
     #From GPK -> MTK
     def mtk_add(self,name,notes):

@@ -5,9 +5,11 @@ from gpkTask import gpk_task
 from time import sleep
 
 class GPK_MTK_Plan(GPK_MTK):
-    def __init__(self,plan_path,api_token,project_id = 'Null',Post = False,nap = 1):
-        self.Load = Load(plan_path)
-        self.Load.get_week_objective()
+    def __init__(self,plan_path = None,api_token = None,
+                 project_id = 'Null',Post = False,nap = 1):
+        if plan_path is not None:
+            self.get_Load(plan_path)
+            
         GPK_MTK.__init__(self,api_token,project_id)
         print(f"GPK_MTK Initialized with Project_id:{project_id}")
         sleep(nap)
@@ -19,13 +21,21 @@ class GPK_MTK_Plan(GPK_MTK):
                   colors = ['orange','red','grass green','turquoise','purple','grass green',
                            'orange','blue'],
                   features = ["enable_timetracking","enable_taskrelationships"])
-        self.Sync()
-        print('GPK Sync Complete')
+        try:
+            self.Sync()
+            print('GPK Sync Complete')
+        except:
+            pass 
+        
         if Post:
             sleep(nap)
             print("Posting All Tasks from the Loaded Plan")
             self.Post_All() #Post all Scheduled Task into the meistertask Planner 
               
+    def get_Load(self,path):
+        self.Load = Load(plan_path)
+        self.Load.get_week_objective()
+        
     def Incubent_tasks(self):
         df = self.View_df('Inbox')
         if len(df) == 0 :
@@ -88,6 +98,7 @@ class GPK_MTK_Plan(GPK_MTK):
             return(date(year, month, day).isocalendar()[2])
         
         if self.PROJECTs[int(self.project_id)] == 'OKR_Plannng':
+            self.Get_info()
             weekday = list(self.SECTIONs.values())[weekday_today()]
             self.Sync()
             return self.View_df(weekday)

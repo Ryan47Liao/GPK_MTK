@@ -41,7 +41,7 @@ def Request(*args,**kargs):
 
 # In[157]:
 
-
+    
 class MTK:
     def __init__(self,token = None, project_id = None,info_show = True):
         """
@@ -54,6 +54,9 @@ class MTK:
         if info_show:
             self.info()
         
+    def get_token(self):
+        return self.__token
+    
     def set_token(self,token):
         self.__token = token
         self.headers_get =  self.Get_Header()
@@ -186,8 +189,9 @@ class GPK_MTK(MTK):
         self.SEC_Labs = {}
         MTK.__init__(self,token = token, project_id = None ,info_show = False)
         if "__Created" not in self.__dict__ and project_id is None:
-            print("CREATING PROJECT")
-            self.RESET()
+            if token is not None:
+                print("CREATING PROJECT")
+                self.RESET()
         else:
             try:
                 project_id = int(project_id)
