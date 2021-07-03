@@ -15,12 +15,7 @@ class GPK_MTK_Plan(GPK_MTK):
         sleep(nap)
         if project_id == 'Null':
             #Create Project and Settings 
-            self.RESET(name = 'OKR_Plannng',
-                       sections = ['Inbox','monday','tuesday','wednesday',
-                                  'thursday','friday','saturday','sunday'], 
-                  colors = ['orange','red','grass green','turquoise','purple','grass green',
-                           'orange','blue'],
-                  features = ["enable_timetracking","enable_taskrelationships"])
+            self.Planner_SetUp()
         try:
             self.Sync()
             print('GPK Sync Complete')
@@ -35,6 +30,14 @@ class GPK_MTK_Plan(GPK_MTK):
     def get_Load(self,path):
         self.Load = Load(plan_path)
         self.Load.get_week_objective()
+        
+    def Planner_SetUp(self):
+        self.RESET(name = 'OKR_Plannng',
+                       sections = ['Inbox','monday','tuesday','wednesday',
+                                  'thursday','friday','saturday','sunday'], 
+                  colors = ['orange','red','grass green','turquoise','purple','grass green',
+                           'orange','blue'],
+                  features = ["enable_timetracking","enable_taskrelationships"])
         
     def Incubent_tasks(self):
         df = self.View_df('Inbox')

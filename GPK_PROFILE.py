@@ -27,7 +27,7 @@ class PROFILE:
         self.__balance = 0
         self.PASSWORD = 'Whatthehell'
         #ENCRYPTION INTIALIZATION
-        self.__RSA_init(password)
+        self.RSA_init(password)
         
         #________________________Other Features__________________________#
         self.mtk_token = None 
@@ -36,7 +36,7 @@ class PROFILE:
         self.inventory = Inventory()
         
         
-    def __RSA_init(self,password:int)->None:
+    def RSA_init(self,password:int)->None:
         "Generate a pair of Random Keys"
         N,e,d = RSA_sys(200)
         d_hat = self.__d_mutate(password,N,e,d) # A Bijective Transformation
@@ -72,7 +72,7 @@ class PROFILE:
 class Gpk_ToDoList:
     def __init__(self):
         self.todos = pd.DataFrame({"ID":[ ],"TaskName":[ ],"Reward":[ ],
-                            "Time(H)":[ ],"Difficulty":[ ],
+                            "Time":[ ],"Difficulty":[ ],
                             "ObjectID":[ ],"KeyResult ID":[ ],"Task Category":[ ]})
         self.Archive = pd.DataFrame()
         self.task_descriptions = {}
@@ -89,12 +89,12 @@ class Gpk_ToDoList:
                 return 
         except KeyError: #When it's empty 
             print("Empty")
-        reward = self.__Reward(task_time,task_diff) #calculate reward based on tasktime and difficulty
+        reward = self.Reward(task_time,task_diff) #calculate reward based on tasktime and difficulty
         Category = task_ID.split("_")[1].split("-")[0][1] #Fetch Task Category Based on Task_ID format 
         KR_ID = task_ID.split("_")[2] 
         O_ID = task_ID.split("_")[1]
         task = pd.DataFrame({"ID":[task_ID],"TaskName":[task_name],"Reward":[reward],
-                            "Time(H)":[task_time],"Difficulty":[task_diff],
+                            "Time":[task_time],"Difficulty":[task_diff],
                             "ObjectID":[O_ID],"KeyResult ID":[KR_ID],"Task Category":[Category],
                             "Deadline":[ddl]})
         try:
@@ -108,7 +108,7 @@ class Gpk_ToDoList:
         else:
             self.todos = self.todos.append(task, ignore_index=True)
     
-    def __Reward(self,time,difficulty):
+    def Reward(self,time,difficulty):
         "Return Rewards Based on Time and Difficulty"
         time_lower_bound = 0.35
         time_upper_bound = 5
@@ -158,7 +158,7 @@ class Gpk_ToDoList:
         date_today = str(datetime.datetime.now().date())
         week_day_today = str(datetime.datetime.now().weekday())
         og_task = copy.deepcopy(self.todos.loc[self.todos['ID'] == task_ID])
-        og_task.insert(8,"date_today",[date_today])
+        og_task.insert(8,"date_done",[date_today])
         og_task.insert(9,"week_day",[week_day_today])
         og_task.insert(10,"time_stamp",[time_stamp])
         try:

@@ -278,8 +278,9 @@ class GPK_MTK(MTK):
         self.SECTIONs_Labs = Sec_Labs
         #print('label matched')
         
-    def Post_task(self,section_id,name:str,notes:str = "",custom_fields:[{str:str}] = [],
-                 checklists:[{str:str}] = []):
+    def Post_task(self,section_id,name:str,notes:str = "",
+                  custom_fields:[{str:str}] = [],checklists:[{str:str}] = []):
+        self.match_labs()
         return MTK.Post_task(self,section_id,name,notes,[self.SECTIONs_Labs[
             self.SECTIONs[section_id]
         ]],custom_fields,checklists)

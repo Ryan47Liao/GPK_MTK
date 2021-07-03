@@ -6,9 +6,19 @@ from IPython.core.display import display
 from Plan_load import task
 
 class gpk_task(task):
-    def __init__(self,name,notes = None,sections = {1:'Personal Dev',2:'Carrer',3:'Health',4:'Family',5:'other'}):
+    def __init__(self,name,notes = None,sections = {1:'Personal Dev',2:'Carrer',3:'Health',4:'Family',5:'other'},
+                 **kargs):
+        """
+        **kargs:
+        -ID
+        -Reward
+        -Time
+        -Difficulty
+        -Description
+        """
         self.name = name 
         self.note = notes
+        self.SECTIONs = sections
         if notes != None:
             T = notes.split('\n\n')
             self.ID = T[0].split(':')[1]
@@ -16,8 +26,16 @@ class gpk_task(task):
             self.Time = float_str(T[1].split('\n')[3]).getvalue()
             self.Difficulty = float_str(T[1].split('\n')[5]).getvalue()
             self.Description= T[1].split('\n')[7]
-            self.SECTIONs = sections
-            self.ID_intepret()
+        else:
+            try:
+                self.ID = kargs['ID']
+                self.Reward = kargs['Reward']
+                self.Time = kargs['Time']
+                self.Difficulty = kargs['Difficulty']
+                self.Description= kargs['Description']
+            except Exception as e:
+                print(e)
+        self.ID_intepret()
         
 
     def ID_intepret(self):
@@ -33,11 +51,6 @@ class gpk_task(task):
         self.section = self.SECTIONs[section]
         self.Kr_Id = self.ID.split("_")[2][-1]
         
-        
-    
-    def __str__(self):
-        return self.note
-    
     def __repr__(self):
         return f"""
 ID:{self.ID}

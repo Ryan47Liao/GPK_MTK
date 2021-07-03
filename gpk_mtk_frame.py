@@ -4,6 +4,7 @@ import GPK_PROFILE
 import pandas as pd
 from PIL import ImageTk,Image
 import os
+from gpk_utilities import *
 
 class Profile_Test:
     def __init__(self,path = None, name = None):
@@ -34,35 +35,6 @@ class Profile_Test:
             else:
                 pass
     
-def df_to_Treeview(master, data:pd.core.frame.DataFrame, col_width = 120,col_minwidth = 25,col_anchor = tk.CENTER
-              ,LABEL = False) :
-    from tkinter import ttk
-    if LABEL:
-        label_text = "Parent"
-        label_bool = tk.YES
-        label_width = col_width
-    else:
-        label_text = ""
-        label_bool = tk.NO
-        label_width = 0
-        
-    my_tree = ttk.Treeview(master)
-    #Define Our Columns
-    my_tree ['columns'] = list(data.columns)
-    #Format the columns & Create Headings (Bar at the very TOP):
-    my_tree.column("#0",width = label_width, stretch = label_bool)
-    my_tree.heading("#0", text = label_text)
-    for col_name in list(data.columns):
-        my_tree.column(col_name,anchor = col_anchor , width = col_width)
-        my_tree.heading(col_name,text = col_name,anchor = col_anchor)
-    #Add Data 
-    iid = 0 #Item ID(UNIQUE)
-    for row in range(data.shape[0]):
-        data_i = list(data.loc[row,])
-        my_tree.insert(parent = "", index = 'end', iid = iid, text = label_text, values = data_i)
-        iid += 1
-
-    return my_tree    
 
 class gpk_mtk_frame(tk.Frame):
     def __init__(self,root,call_back=None):
@@ -76,6 +48,7 @@ class gpk_mtk_frame(tk.Frame):
             def PASS(*args,**kargs):
                 return 
             self.call_back = PASS
+            self.Profile  = None 
         self._draw()
         
     def update_token(self):
@@ -129,6 +102,7 @@ class gpk_mtk_frame(tk.Frame):
         ID = list(Profile.todos.PROJECTs.keys())[self.tree_index]
         print(f"ID {ID} selected.")
         Profile.todos.set_project_id(ID)
+        Profile.todos.info()
         self.call_back(Profile,Update = True)
         
     def _draw(self):
@@ -152,10 +126,18 @@ class gpk_mtk_frame(tk.Frame):
             self.update_token()
         except AttributeError:
             pass 
+        #Create GPK_MTK Project 
+        self.gm_create_btn = tk.Button(master = self, text = 'Create MTK_OKR')
+        self.gm_create_btn.config(command = self.Profile.todos.RESET)
+        self.gm_create_btn.pack()
+        #Create OKR_Planning Project
+        self.op_create_btn = tk.Button(master = self, text = 'Create OKR_Planning')
+        self.gm_create_btn.config(command = self.Profile.todos.Planner_SetUp)
+        self.op_create_btn.pack()
     
 if __name__ == '__main__':
     root = tk.Tk()
-    T = Profile_Test(name = 'Ryan')
+    T = Profile_Test(path = 'D:/GPK/gpk_saves/Ryan_TEST.gpk')#D:/GPK/gpk_saves/
     temp = gpk_mtk_frame(root,T.Profile_call_back)
     temp.pack()
     root.mainloop()
