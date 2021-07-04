@@ -233,41 +233,6 @@ class gpk_Shell:
                                             \t\t\t\t\t\t Version: {self.version}
                                             """ ).pack(pady = 10, padx = 100, side = tk.RIGHT)
 
-# In[4]:
-
-
-def df_to_Treeview(master, data:pd.core.frame.DataFrame, col_width = 120,col_minwidth = 25,col_anchor = tk.CENTER
-              ,LABEL = False) :
-    if LABEL:
-        label_text = "Parent"
-        label_bool = tk.YES
-        label_width = col_width
-    else:
-        label_text = ""
-        label_bool = tk.NO
-        label_width = 0
-        
-    my_tree = ttk.Treeview(master)
-    #Define Our Columns
-    my_tree ['columns'] = list(data.columns)
-    #Format the columns & Create Headings (Bar at the very TOP):
-    my_tree.column("#0",width = label_width, stretch = label_bool)
-    my_tree.heading("#0", text = label_text)
-    for col_name in list(data.columns):
-        my_tree.column(col_name,anchor = col_anchor , width = col_width)
-        my_tree.heading(col_name,text = col_name,anchor = col_anchor)
-    #Add Data 
-    iid = 0 #Item ID(UNIQUE)
-    for row in range(data.shape[0]):
-        data_i = list(data.loc[row,])
-        my_tree.insert(parent = "", index = 'end', iid = iid, text = label_text, values = data_i)
-        iid += 1
-
-    return my_tree    
-
-
-# In[12]:
-
 
 class gpk_Main():
     def __init__(self,Profile,file_path):
@@ -276,7 +241,7 @@ class gpk_Main():
         self.gpk_main_rt = tk.Tk()
         self.gpk_main_rt.option_add('*tearOff', False)
         self.gpk_main_rt.title("GPK_Main")
-        base = 100
+        base = 120
         width = base*16
         height = base*9
         self.geometry = {'width':width,'height':height}
@@ -315,7 +280,9 @@ class gpk_Main():
             if frame != exception:
                 getattr(self,frame).pack_forget()
                 
-        
+    def RETURN(self):
+        self.gpk_main_rt.destroy()
+        gpk_Shell()
     
     def _draw(self):
         #++++++++++++++++++++++++++ＭＥＮＵ++++++++++++++++++++++++++++++++++++++#
@@ -374,7 +341,13 @@ class gpk_Main():
         DashBoard = tk.Menu(menu_bar)#, postcommand = lambda: self.call_frame('gpk_dash_board'))
         menu_bar.add_cascade(menu=DashBoard, label='DashBoard')
         DashBoard.add_command(label='HOME', command = lambda: self.call_frame('gpk_dash_board'))
-
+        
+        #_________________Menu->Exit________________________
+        Exit = tk.Menu(menu_bar)
+        menu_bar.add_cascade(menu=Exit, label='Exit')
+            
+        Exit.add_command(label='Main Menu', command = self.RETURN)
+        Exit.add_command(label='QUIT', command =  self.gpk_main_rt.destroy)
         
         #++++++++++++++++++++++++++DashBoard(HOME)++++++++++++++++++++++++++++++++++++++#
         self.gpk_dash_board = gpk_dash(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)

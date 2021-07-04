@@ -23,10 +23,12 @@ class gpk_analysis(gpk_archive):
         self.width = geometry['width']
         self.Search =  DF_Search(self.Profile.todos.Archive)
         self.Analysis = DF_Analysis(df = self.Profile.todos.Archive,figsize = (10,5))
+        self.NEW_DF = False
         self._draw()
         
         
-    def frame_create(self):
+    def CF_create(self):
+        "Create a Canvas Frame"
         self.Canvas_height_coef = 2/3 
         self.Canvas_width_coef = 2/3
         self.Canvas_Frame = tk.Frame( master = self.FrameUPPER, bd = 30)#, bg = 'green')
@@ -35,15 +37,17 @@ class gpk_analysis(gpk_archive):
         self.Canvas_Frame.config(highlightbackground="black" , highlightthickness=2)
         self.Canvas_Frame.pack(side = tk.LEFT)
         
-    def frame_refresh(self):
+    def CF_refresh(self):
         self.Canvas_Frame.destroy()
-        self.frame_create()
+        self.CF_create()
         
     
     def Submit(self):
-        self.frame_refresh()
+        self.CF_refresh()
         #_____PLOTING______#
         self.Analysis.Rest_fig()
+        if not self.NEW_DF:
+            self.Analysis.Set_df(self.call_back(Return = True).todos.Archive)
         if self.Combo.get() == 'Pick an Option':
             getattr(messagebox,'showwarning')("Option Error","You must Select an Option first (Time/Reward)") 
         else:
@@ -68,14 +72,14 @@ class gpk_analysis(gpk_archive):
             self.canvas.get_tk_widget().grid(row = 0, column = 0)        
             
     def Apply_df(self,df):
-        self.Search = DF_Search(df)
+        self.Analysis.Set_df(df)
         
     def pop_df(self,df):
         res_temp = gpk_archive.pop_df(self,df)
         save_btn = tk.Button(master = res_temp,text = 'Apply Filter')
         save_btn.configure(command = lambda :self.Apply_df(df))
         save_btn.pack()
-        
+        self.NEW_DF = True
     
     def _draw(self):
     #____Upper Frame___
@@ -83,9 +87,7 @@ class gpk_analysis(gpk_archive):
         self.FrameUPPER.configure(height = 4*self.height/5 ,width = self.width)
         self.FrameUPPER.pack()
         #Canvas Frame 
-        self.Canvas_height_coef = 3/5 
-        self.Canvas_width_coef = 1
-        self.frame_create()
+        self.CF_create()
 
         
         

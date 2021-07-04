@@ -12,36 +12,6 @@ from GPK_PROFILE import PROFILE
 from GPK_PROFILE import Gpk_ToDoList
 from gpkTask import gpk_task
         
-def df_to_Treeview(master, data:pd.core.frame.DataFrame, col_width = 120,col_minwidth = 25,col_anchor = tk.CENTER
-              ,LABEL = False) :
-    from tkinter import ttk
-    if LABEL:
-        label_text = "Parent"
-        label_bool = tk.YES
-        label_width = col_width
-    else:
-        label_text = ""
-        label_bool = tk.NO
-        label_width = 0
-        
-    my_tree = ttk.Treeview(master)
-    #Define Our Columns
-    my_tree ['columns'] = list(data.columns)
-    #Format the columns & Create Headings (Bar at the very TOP):
-    my_tree.column("#0",width = label_width, stretch = label_bool)
-    my_tree.heading("#0", text = label_text)
-    for col_name in list(data.columns):
-        my_tree.column(col_name,anchor = col_anchor , width = col_width)
-        my_tree.heading(col_name,text = col_name,anchor = col_anchor)
-    #Add Data 
-    iid = 0 #Item ID(UNIQUE)
-    for row in range(data.shape[0]):
-        data_i = list(data.loc[row,])
-        my_tree.insert(parent = "", index = 'end', iid = iid, text = label_text, values = data_i)
-        iid += 1
-
-    return my_tree    
-
 class Profile_Test:
     def __init__(self,path = None, name = None):
         if path is not None:
@@ -75,10 +45,17 @@ class gpk_to_do(tk.Frame):
     def __init__(self,root,geometry,callback  = None):
         super().__init__()
         self.root = root
+        self.root.attributes("-fullscreen", True)  
         self.callback = callback
         self.height = geometry['height']
         self.width = geometry['width']
+        self.Analysis = DF_Analysis(df = self.Main_Profile().todos.todos,
+                                    figsize = (12,3))
         self._draw()
+        try:
+            self.todo_summary()
+        except:
+            pass
         
     def Main_Profile(self):
         if self.callback is not None:
@@ -139,6 +116,34 @@ class gpk_to_do(tk.Frame):
         
         self.set_text_entry(Profile.todos.task_descriptions[ID] )
         
+    def If_Valid(self,ID,Name,Time,Diff,Description,ddl):
+        Profile_temp = self.Main_Profile()
+        try:
+            Reward = Profile_temp.todos.Reward(Time,Diff)
+        except Exception as e :
+            getattr(messagebox,'showwarning')("Fail to Create Task",
+                        f"Time and Diff must be numbers of form: 3.4 or 4")
+            print(e)
+          
+            return False
+        try:
+            gpk_task(name = Name,ID = ID,Reward = Reward,Time = Time,Difficulty = Diff,
+                             Description = Description)
+        except:
+            getattr(messagebox,'showwarning')("Fail to Create Task",
+                        f"ID must be of form S_G1-1_K3")
+          
+            return False
+        try:
+            DATE(ddl)
+        except:
+            getattr(messagebox,'showwarning')("Fail to Create Task",
+                        f"Current deadline is {ddl}.\n Please Enter in format 2020-01-01")
+          
+            return False
+        return True
+
+        
     def submit(self):
         #1.Save file
         ID = self.Id_entry.get()
@@ -146,34 +151,35 @@ class gpk_to_do(tk.Frame):
         Time = float(self.time_entry.get())
         Diff = float(self.Dif_entry.get())
         ddl  = self.deadline_entry.get()
-        if DATE(ddl) is None:
-            ddl = (datetime.datetime.now()+ datetime.timedelta(days = 1)).date()
-            self.deadline_entry.set(ddl)
         Description = self.get_text_entry()
-
-        #1.5:Update File
-        Profile_temp = self.Main_Profile()
-        Profile_temp.todos.delete("S_G0-0_K0")
-        Profile_temp.todos.edit(Name,ID,Time,Diff,Description,ddl)
-        self.callback(Profile = Profile_temp, Update = True)
-        #2.Reload Tree
-        self.todo_tree_update()
-        #3.Update Summary
-        self.todo_summary()
-        
-        #4. If applicable, Send the Task to MTK 
-        Reward = Profile_temp.todos.Reward(Time,Diff)
-        if self.sync_status.get():
-            current_project = Profile_temp.todos.PROJECTs[Profile_temp.todos.project_id]
-            if  current_project == 'MTK_OKR':
-                Gtask = gpk_task(name = Name,ID = ID,Reward = Reward,Time = Time,Difficulty = Diff,
-                             Description = Description)
-                sec_id = Profile_temp.todos.Get_Sec_ID(Gtask.section) 
-                Profile_temp.todos.Post_task(section_id = sec_id, name = Name, notes = str(Gtask))
-            else:
-                getattr(messagebox,'showwarning')("Wrong Project",
-                        f"Current Project is {current_project}.\n Please first select (or create) Project MTK_OKR in the Week Panel first.")
-          
+        if ddl is None:
+            ddl = (datetime.datetime.now()+ datetime.timedelta(days = 1)).date()
+            self.deadline_entry.insert(0,ddl)
+        if self.If_Valid(ID,Name,Time,Diff,Description,ddl):
+            print("Task Valid, Creating Task")
+            #1.5:Update File
+            Profile_temp = self.Main_Profile()
+            Profile_temp.todos.delete("S_G0-0_K0")
+            Profile_temp.todos.edit(Name,ID,Time,Diff,Description,ddl)
+            self.callback(Profile = Profile_temp, Update = True)
+            #2.Reload Tree
+            self.todo_tree_update()
+            #3.Update Summary
+            self.todo_summary()
+            
+            #4. If applicable, Send the Task to MTK 
+            Reward = Profile_temp.todos.Reward(Time,Diff)
+            if self.sync_status.get():
+                current_project = Profile_temp.todos.PROJECTs[Profile_temp.todos.project_id]
+                if  current_project == 'MTK_OKR':
+                    Gtask = gpk_task(name = Name,ID = ID,Reward = Reward,Time = Time,Difficulty = Diff,
+                                 Description = Description)
+                    sec_id = Profile_temp.todos.Get_Sec_ID(Gtask.section) 
+                    Profile_temp.todos.Post_task(section_id = sec_id, name = Name, notes = str(Gtask))
+                else:
+                    getattr(messagebox,'showwarning')("Wrong Project",
+                            f"Current Project is {current_project}.\n Please first select (or create) Project MTK_OKR in the Week Panel first.")
+              
         
     
     def add(self):
@@ -222,20 +228,12 @@ class gpk_to_do(tk.Frame):
         
         
     def todo_summary(self):
-        Profile_temp = self.Main_Profile()
-        time_tot = sum(Profile_temp.todos.todos['Time'])
-        reward_tot = sum(Profile_temp.todos.todos['Reward'])
-        try:
-            self.summary_label.destroy()
-        except:
-            pass
-        self.summary_label = tk.Label(master = self.summaryFrame, text = 
-                                     """
-                                Total Rewards:  {}
-                                Total Time:     {}
-                                     """.format(reward_tot,time_tot), font = 10)
-        self.summary_label.grid(row = 0, column = 0, padx = 150)
-    
+        Profile_temp = self.callback(Return = True)
+        self.summary.set(f"""
+                    Total Rewards:  {sum(Profile_temp.todos.todos['Time'])},  Total Time:  {sum(Profile_temp.todos.todos['Reward'])}
+                        """)
+        self.CF_refresh()
+
     def check_mtk_sync_status(self):
         "Check if the program is ready to connect to MTK"
         Profile = self.callback(Return = True)
@@ -285,29 +283,62 @@ class gpk_to_do(tk.Frame):
             # print("You need to first Set up the MTK Token")
             # print(e)
             # #First Set Up The MTK 
+            self.todo_summary()
         else:
             getattr(messagebox,'showwarning')("Mtk Sync Offline",
                                               "Check the Box on the left to enable it")
                      
+    
+    ### Canvas Frame Mods                  
+    def CF_create(self,master,hc = 2/3, wc = 2/3,side = None):
+        "Create a Canvas Frame"
+        self.Canvas_height_coef = 1/2 
+        self.Canvas_width_coef = 2/3
+        self.Canvas_Frame = tk.Frame( master = master, bd = 30 )#)#, bg = 'green')
+        self.Canvas_Frame.configure(height = self.Canvas_height_coef*self.height,
+                                  width = self.Canvas_width_coef*self.width)
+        self.Canvas_Frame.config(highlightbackground="black" , highlightthickness=2)
+        self.Canvas_Frame.pack(side = side)
+        
+    def CF_refresh(self):
+        try:
+            self.Canvas_Frame.destroy()
+        except AttributeError:
+            pass 
+        self.CF_create(master= self.summaryFrame, hc = 1/4, wc = 1/2)
+        self.CF_draw()
+        #Finally:
+        self.fig = self.Analysis.get_fig()
+        self.canvas = FigureCanvasTkAgg(self.fig,self.Canvas_Frame)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(row = 0, column = 0)        
             
+        
+    def CF_draw(self):
+        PROFILE = self.Main_Profile()
+        self.Analysis.fig.clear()
+        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.todos, dim = 131 , title = 'Current Time Distribution')
+        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 132,title = 'History Time Distribution')
+        self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 133)
+        
                 
     def _draw(self):
         ###Upper Frame###
-        self.FrameUPPER = tk.Frame(master = self, bd = 20)#, bg = 'Blue')
+        self.FrameUPPER = tk.Frame(master = self, bd = 20 )#)#, bg = 'Blue')
         self.FrameUPPER.configure(height = 4*self.height/5 ,width = self.width)
         self.FrameUPPER.pack( )
         #____Tree View_Frame___
-        self.tree_height_coef = 4/5 
-        self.tree_width_coef = 2/3
-        self.treeFrame = tk.Frame( master = self.FrameUPPER, bd = 30)#, bg = 'green')
+        self.tree_height_coef = 2/3 
+        self.tree_width_coef = 1/2
+        self.treeFrame = tk.Frame( master = self.FrameUPPER, bd = 10 )#)#)#, bg = 'green')
         self.treeFrame.configure(height = self.tree_height_coef*self.height,
                                   width = self.tree_width_coef*self.width)
         self.treeFrame.grid_propagate(0)
-        self.treeFrame.pack(side = tk.LEFT, pady = 100)
+        self.treeFrame.pack(side = tk.LEFT, pady = 20)
         #GET Tree#
         self.todo_tree_update()
         #____Editing_Frame___
-        self.editingFrame = tk.Frame(master = self.FrameUPPER, bd = 10)#, bg = 'Yellow')
+        self.editingFrame = tk.Frame(master = self.FrameUPPER, bd = 10 )#)#)#, bg = 'Yellow')
         self.editingFrame.configure(height = 1/2*self.height ,
                                     width = (1-self.tree_width_coef)*self.width)
         self.editingFrame.grid_propagate(0)
@@ -332,8 +363,7 @@ class gpk_to_do(tk.Frame):
         self.description_editor = tk.Text(self.editingFrame, width=0)
         
         
-        # self.spacer = tk.Label(master = self.editingFrame, text = '')
-        # self.spacer.grid(row = 0, pady = 120,column = 0 , columnspan = 2)
+
         base = 1
         self.Id_label.grid(padx = 5, pady = 10, row = base + 0, column = 0)
         self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1)
@@ -350,23 +380,35 @@ class gpk_to_do(tk.Frame):
         self.description_editor.grid(row = base +6, column = 0, columnspan = 3, ipadx=200, pady=5)
             
         ###Lower Frame### (Middle) 
-        self.FrameLOWER = tk.Frame(master = self, bd = 2)#, bg = 'Red')
+        self.FrameLOWER = tk.Frame(master = self, bd = 2 )#)#)#, bg = 'Red')
         self.FrameLOWER.configure(height = self.height/2 ,width = self.width)
         self.FrameLOWER.pack( )
         #____Summary_Frame___
-        self.summaryFrame = tk.Frame(master = self.FrameLOWER, bd = 2)#, bg = 'Orange')
-        self.summaryFrame.configure(height = self.height/2 , width = (54/100)*self.width)
+        self.summary = tk.StringVar()
+        self.summaryFrame = tk.Frame(master = self.FrameLOWER, bd = 2 )#)#, bg = 'Orange')
+        self.summaryFrame.configure(height = self.height/2 , width = (80/100)*self.width)
         self.summaryFrame.grid_propagate(0)
         self.summaryFrame.pack(side = tk.LEFT)
-        self.todo_summary()
+        self.summary_label = tk.Label(master = self.summaryFrame, textvariable =  self.summary)
+
+        self.summary_label.pack()
+        try:
+            self.todo_summary()
+        except Exception as e:
+            print(e) 
+        ##Canvas_Frame 
+        #self.CF_create(master= self.summaryFrame, hc = 1/4, wc = 1/2)
+        
         
         #____Buttons_Frame___
-        self.controlFrame = tk.Frame(master = self.FrameLOWER,  bd = 2)#,bg = 'Purple')
+        self.controlFrame = tk.Frame(master = self.FrameLOWER,  bd = 2 )#,bg = 'Purple')
         self.controlFrame.configure(height = self.height/2 ,width = (46/100)*self.width)
         self.controlFrame.grid_propagate(0)
         self.controlFrame.pack(side = tk.LEFT )
         # 
-        self.spacer2 = tk.Label(master =self.controlFrame)
+        #self.spacer2 = tk.Label(master =self.controlFrame)
+        self.spacer = tk.Label(master = self.controlFrame, text = '')
+        self.spacer.grid(row = 0,column = 0 , pady = 50, columnspan = 2)
         self.img_submit = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sumbit_icon_p8d_icon.ico"))
         self.Submit_btn = tk.Button(bd = 2, master =self.controlFrame, image =  self.img_submit, command = self.submit)
         self.img_add = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/add_task_GGR_icon.ico"))
@@ -376,24 +418,24 @@ class gpk_to_do(tk.Frame):
         self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/task_complete.png"))
         self.Complete_btn = tk.Button(master =self.controlFrame, image  =  self.img_complete , command = self.complete)
         #Set Location for the buttons 
-        self.spacer2.grid(padx = 160, row = 0 ,column = 0 )
-        self.Submit_btn.grid(padx = 20, row = 0, column = 3)
-        self.Add_btn.grid(padx = 20,row = 0, column = 2)
-        self.Delete_btn.grid(padx = 20,row = 0, column = 1)
-        self.Complete_btn.grid(pady = 20, ipadx  =50, row = 1, column = 1,columnspan = 3)
+        #self.spacer2.grid(padx = 160, row =  ,column = 0 )
+        self.Submit_btn.grid(padx = 20, row = 1, column = 3)
+        self.Add_btn.grid(padx = 20,row = 1, column = 2)
+        self.Delete_btn.grid(padx = 20,row = 1, column = 1)
+        self.Complete_btn.grid(pady = 20, ipadx  =50, row = 2, column = 1,columnspan = 3)
         
         #Add Mtk Sync Status 
         self.sync_status = tk.IntVar()
         self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status,
                                         onvalue=1, offvalue=0, command = self.check_mtk_sync_status)
-        self.sync_chbx.grid(padx = 20,row = 2, column = 1)
+        self.sync_chbx.grid(padx = 20,row = 3, column = 1)
         self.rmchbox_label = tk.Label (self.controlFrame,text = "MTK SYNC")
-        self.rmchbox_label.grid(row = 2, column = 2)
+        self.rmchbox_label.grid(row = 3, column = 2)
         #Add Sync Button 
         self.sync_ref_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
         self.SYNC_btn = tk.Button(master =self.controlFrame, image  =  self.sync_ref_img , 
                                   command = self.mtk_sync)
-        self.SYNC_btn.grid(row = 2, column = 3)
+        self.SYNC_btn.grid(row = 3, column = 3)
         
         
 if __name__ == '__main__':

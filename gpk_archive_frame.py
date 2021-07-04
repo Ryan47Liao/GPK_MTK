@@ -76,15 +76,32 @@ def pred_{sec}(x):
         
     def pop_df(self,df):
         node_select = 0 
-        def node_select(self):
+        def node_select(event = None):
+            nonlocal tree_index
             tree_index = int(treeview.selection()[0]) 
-            description_update(tree_index)
+            description_update()
             
-        def description_update(tree_index):
+        def description_update():
+            nonlocal tree_index
             des = str(df.iloc[tree_index]['description'])
             task_DES.set(des)
-            task_DES_lab.pack()
             
+        def task_delete():
+            nonlocal tree_index
+            Profile = self.call_back(Return = True)
+            true_idx = perfect_match(df = Profile.todos.Archive,
+                                     target = df.iloc[tree_index])
+            
+            #Update the Profile 
+            print(Profile.todos.Archive.loc[true_idx])
+            Profile.todos.Archive = Profile.todos.Archive.drop(true_idx)
+            print(f"Task at index {true_idx} deleted")
+            print(Profile.todos.Archive.loc[true_idx])
+            self.call_back(Profile,Update = True)
+            #Update BOTH TreeView
+            
+            
+        tree_index = 0
         task_DES = tk.StringVar()
         task_DES.set("Select Task To update")
         res_temp = tk.Toplevel()
@@ -93,6 +110,10 @@ def pred_{sec}(x):
         treeview.bind("<<TreeviewSelect>>", node_select)
         task_DES_lab = tk.Label(res_temp,textvariable = task_DES)
         task_DES_lab.pack()
+        #Delete Task 
+        delete_button = tk.Button(res_temp,text = 'Delete', command = task_delete)
+        delete_button.pack()
+        
         return res_temp
             
     def _draw(self):

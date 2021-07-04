@@ -112,7 +112,10 @@ class gpk_mtk_frame(tk.Frame):
         self.submit_btn = tk.Button(master = self, text = 'Save', 
                                command = lambda: self.set_token(self.Key_entry.get()) )
         #Project SetUp
-        self.tree_update()
+        self.treeview = df_to_Treeview(master=self, data = pd.DataFrame({'Project Name':[],
+                                                                         'Project ID':[]}))
+        self.treeview.pack(pady = 20)
+        self.treeview.bind("<<TreeviewSelect>>", self.node_select)
         #Packing...
         self.Key_label.pack()
         self.Key_entry.pack()
