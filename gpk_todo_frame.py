@@ -153,7 +153,7 @@ class gpk_to_do(tk.Frame):
         ddl  = self.deadline_entry.get()
         Description = self.get_text_entry()
         if ddl is None:
-            ddl = (datetime.datetime.now()+ datetime.timedelta(days = 1)).date()
+            ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
             self.deadline_entry.insert(0,ddl)
         if self.If_Valid(ID,Name,Time,Diff,Description,ddl):
             print("Task Valid, Creating Task")

@@ -93,10 +93,8 @@ def pred_{sec}(x):
                                      target = df.iloc[tree_index])
             
             #Update the Profile 
-            print(Profile.todos.Archive.loc[true_idx])
             Profile.todos.Archive = Profile.todos.Archive.drop(true_idx)
             print(f"Task at index {true_idx} deleted")
-            print(Profile.todos.Archive.loc[true_idx])
             self.call_back(Profile,Update = True)
             #Update BOTH TreeView
             

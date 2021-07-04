@@ -90,24 +90,39 @@ class gpk_Shell:
         self.shell_rt.destroy()
         
     #__________________REGISTRATION__________________#
-    def new_account(self,name,password):
+    def new_account(self,name,password,tutorial = True):
         self.reg_window.destroy()
         getattr(messagebox,'showwarning')("Creating New Profile","This might take 10-20s to generate encryption keys...")
         self.Profile = PROFILE(name, int(password))
         #Finally, Create such a gpk file...
-        if True:
-            try:
-                file_name = "{}_user_file".format(name)
-                entry = "C {} -n {}".format(self.parent_address,file_name)
-                file_path = File_Exp(entry,RETURN= True) #Create a file at the destination 
-                print("file_path:",file_path)
-                self.Profile.Save(str(file_path)) #Dump the information into the file
-                
-            except Exception as ex:
-                print("Error,fail to create account:\n",ex)
-                
-            finally:
-                self.open_profile() 
+        try:
+            file_name = "{}_user_file".format(name)
+            entry = "C {} -n {}".format(self.parent_address,file_name)
+            file_path = File_Exp(entry,RETURN= True) #Create a file at the destination 
+            print("file_path:",file_path)
+            if tutorial:
+                self.Profile = self.tutorial(self.Profile)
+            self.Profile.Save(str(file_path)) #Dump the information into the file
+            
+        except Exception as ex:
+            print("Error,fail to create account:\n",ex)
+            
+        finally:
+            self.open_profile() 
+            
+    def tutorial(self,Profile):
+        ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
+        Profile.todos.add(task_name = 'Intepret Task ID ',task_ID = 'S_G1-1_K1',
+                          task_time = 1,task_diff = 1,task_des = 'S_G1-1_K1 Means: Task is SPECIAL, under Goal 1-1, is the 1st Key Result',ddl = ddl)
+        Profile.todos.add(task_name = 'Tutorial:Create a Task',task_ID = 'S_G3-0_K1',task_time = 1,task_diff = 1,
+                          task_des = 'When you create a Task, a NULL task will be created, you can modify it and then add it \
+by clicking the [Submit] button on the bottom left',ddl = ddl)
+        Profile.todos.add(task_name = 'Tutorial:Delete a Task',task_ID = 'S_G3-0_K2',task_time = 1,task_diff = 1,
+                          task_des ='Select a Task you wish to delete, and then click the delete button on the bottom left',ddl = ddl)
+        Profile.todos.add(task_name = 'Tutorial:Complete a Task',task_ID ='S_G3-0_K3',task_time = 1,task_diff = 1,
+                          task_des = 'If you are DONE with a task, be sure to UPDATE the time you took to complete, and click [Complete]\
+the task will then be Archived into the Archive',ddl = ddl)
+        return Profile  
         
     def gpk_reg(self):
         self.reg_window = tk.Toplevel()
