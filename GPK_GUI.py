@@ -15,6 +15,7 @@ from gpk_mtk_frame import gpk_mtk_frame
 from gpk_todo_frame import gpk_to_do
 from gpk_archive_frame import gpk_archive
 from gpk_stat_frame import gpk_analysis
+from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning
 
 class gpk_Shell:
     def __init__(self):
@@ -270,7 +271,7 @@ class gpk_Main():
     def profile_save(self):
         self.Profile.Save(self.file_path)
         
-    def Profile_call_back(self, Profile = None, Update = False, Return = False):
+    def Profile_call_back(self, Profile = None, Update = False, Return = False , call_frame_name = None):
         """
         Interact with subFrames and modify the Profile in the Main APP.
         Toggle Return to Get Profile 
@@ -282,7 +283,9 @@ class gpk_Main():
         elif Return:
             return self.Profile 
         else:
-            pass
+            if call_frame_name is not None:
+                self.call_frame(call_frame_name)
+            
     
 
     def call_frame(self, frame_name):
@@ -315,10 +318,14 @@ class gpk_Main():
         #_________________Menu->WEEK________________________
         menu_Week = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Week, label='Week')
-        menu_Week.add_command(label='Week Planning', command = lambda: self.call_frame('gpk_week'))
+        menu_Week.add_command(label='Week Progress', command = lambda: self.call_frame('gpk_weekView'))
         
-        self.gpk_week = gpk_week(self.gpk_main_rt)
-        self.FRAMES.append("gpk_week")
+        self.gpk_weekView = gpk_weekView(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.FRAMES.append("gpk_weekView")
+        
+        menu_Week.add_command(label='Week Planning', command = lambda: self.call_frame('gpk_weekPlanning'))
+        self.gpk_weekPlanning = gpk_weekPlanning(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.FRAMES.append("gpk_weekPlanning")
         #_________________Menu->STORE________________________
         menu_Store = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Store, label='Store')
@@ -400,17 +407,6 @@ class gpk_dash(tk.Frame):
         #___________RightFrame______________#
         self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_okr')
         self.to_dos.pack()
-
-class gpk_week(tk.Frame):
-    def __init__(self,root):
-        super().__init__(bg = 'pink')
-        self.root = root
-        self._draw()
-        
-    def _draw(self):
-        self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_week')
-        self.to_dos.pack()
-
 
 # In[17]:
 

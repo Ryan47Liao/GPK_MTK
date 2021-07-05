@@ -81,10 +81,31 @@ def GAP_Filler(dates,freq):
     "Take a list of date Strs (Potentially Gapped),and return a patched one, assuming the are in dec order (Recent to Last)"
     def yesterday(date_str):
         return (DATE(date_str) - datetime.timedelta(days = 1))
+    
     def tmr(date_str):
-        return (DATE(date_str) + datetime.timedelta(days = 1)).date
+        return (DATE(date_str) + datetime.timedelta(days = 1))
+    
+    def ascending(dates):
+        out = [DATE(dates[idx]) >= DATE(dates[idx+1 ]) for idx in range(len(dates)-1)]
+        return all(out)
+    
+    def decending(dates):
+        out = [DATE(dates[idx]) <= DATE(dates[idx+1 ]) for idx in range(len(dates)-1)]
+        return all(out)  
+     
     if len(dates) == 1:
         return dates,freq
+    
+    if ascending(dates):
+        print('Dates are Backward Ordered')
+        NEXT = yesterday 
+    elif decending(dates):
+        NEXT = tmr
+        print('Dates are Forward Ordered')
+    else:
+        raise Exception(f"The dates are not ordered. {dates}")
+
+    
     dates_out = []
     freq_out = []
     for idx in range(len(dates)-1):
@@ -92,8 +113,8 @@ def GAP_Filler(dates,freq):
         date = dates[idx]
         dates_out.append(date)
         freq_out.append(freq[idx])
-        for _ in range(gap.days-1):
-            date = str(yesterday(date))
+        for _ in range(abs(gap.days)-1):
+            date = str(NEXT(date))
             dates_out.append(date)
             freq_out.append(0)
     return dates_out,freq_out
@@ -126,7 +147,7 @@ class DF_Analysis(DF_Search):
         canvas.get_tk_widget().grid(row = 0, column = 0)
         window.mainloop()
         
-    def Plot_Date(self, n = None, sec = 'Time', df = None ,dim = 111,title = None):
+    def Plot_Date(self, n = None, sec = 'Time', df = None ,dim = 111,title = None,short = False):
         if df is None:
             df = copy.deepcopy( self.df )  
         plot_id = str(dim)[-1]
@@ -146,6 +167,8 @@ class DF_Analysis(DF_Search):
         dates = [i for i in res.index]
         freq = res[sec]
         dates,freq = GAP_Filler(dates,freq)#Fill the potential Gaps
+        if short:
+            dates = [date.split('-')[1]+'.'+date.split('-')[2] for date in dates]
         eval(f'plot{plot_id}.bar(dates,freq)')
         eval(f'plot{plot_id}.set_xlabel("Date")')
         eval(f'plot{plot_id}.set_ylabel(sec)')
@@ -253,6 +276,8 @@ class DF_Analysis(DF_Search):
         self.fig.clear()
         
 if __name__ == '__main__':
-    dates = ['2021-07-02','2021-06-30','2021-06-20']
+    dates = ['2021-06-20','2021-06-30','2021-07-02']
     freq = [4,2,5]
+    print( GAP_Filler(dates,freq) )
+    dates = ['2021-07-02','2021-06-30','2021-06-20']
     print( GAP_Filler(dates,freq) )

@@ -68,7 +68,7 @@ class gpk_to_do(tk.Frame):
             pass
         Profile = self.Main_Profile()
         self.treeview = df_to_Treeview(master=self.treeFrame, data = Profile.todos.todos)
-        self.treeview.pack(pady = 20)
+        self.treeview.pack(pady = 20, ipady = 120)
         self.treeview.bind("<<TreeviewSelect>>", self.node_select)
         
     def node_select(self,event = None):
@@ -294,7 +294,7 @@ class gpk_to_do(tk.Frame):
         "Create a Canvas Frame"
         self.Canvas_height_coef = 1/2 
         self.Canvas_width_coef = 2/3
-        self.Canvas_Frame = tk.Frame( master = master, bd = 30 )#)#, bg = 'green')
+        self.Canvas_Frame = tk.Frame( master = master, bd = 30 )#, bg = 'green')
         self.Canvas_Frame.configure(height = self.Canvas_height_coef*self.height,
                                   width = self.Canvas_width_coef*self.width)
         self.Canvas_Frame.config(highlightbackground="black" , highlightthickness=2)
@@ -318,27 +318,27 @@ class gpk_to_do(tk.Frame):
         PROFILE = self.Main_Profile()
         self.Analysis.fig.clear()
         self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.todos, dim = 131 , title = 'Current Time Distribution')
-        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 132,title = 'History Time Distribution')
-        self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 133)
+        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 133,title = 'History Time Distribution')
+        self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 132, short = True)
         
                 
     def _draw(self):
         ###Upper Frame###
-        self.FrameUPPER = tk.Frame(master = self, bd = 20 )#)#, bg = 'Blue')
-        self.FrameUPPER.configure(height = 4*self.height/5 ,width = self.width)
-        self.FrameUPPER.pack( )
+        self.FrameUPPER = tk.Frame(master = self, bd = 20 )#, bg = 'Blue')
+        self.FrameUPPER.configure(height = self.height/2 ,width = self.width)
+        self.FrameUPPER.pack()
         #____Tree View_Frame___
-        self.tree_height_coef = 2/3 
+        self.tree_height_coef = 1 
         self.tree_width_coef = 1/2
-        self.treeFrame = tk.Frame( master = self.FrameUPPER, bd = 10 )#)#)#, bg = 'green')
+        self.treeFrame = tk.Frame( master = self.FrameUPPER, bd = 10)# , bg = 'green')
         self.treeFrame.configure(height = self.tree_height_coef*self.height,
                                   width = self.tree_width_coef*self.width)
         self.treeFrame.grid_propagate(0)
-        self.treeFrame.pack(side = tk.LEFT, pady = 20)
+        self.treeFrame.pack(side = tk.LEFT, pady = 10,fill = 'y' )
         #GET Tree#
         self.todo_tree_update()
         #____Editing_Frame___
-        self.editingFrame = tk.Frame(master = self.FrameUPPER, bd = 10 )#)#)#, bg = 'Yellow')
+        self.editingFrame = tk.Frame(master = self.FrameUPPER, bd = 10)# , bg = 'Yellow')
         self.editingFrame.configure(height = 1/2*self.height ,
                                     width = (1-self.tree_width_coef)*self.width)
         self.editingFrame.grid_propagate(0)
@@ -380,12 +380,12 @@ class gpk_to_do(tk.Frame):
         self.description_editor.grid(row = base +6, column = 0, columnspan = 3, ipadx=200, pady=5)
             
         ###Lower Frame### (Middle) 
-        self.FrameLOWER = tk.Frame(master = self, bd = 2 )#)#)#, bg = 'Red')
+        self.FrameLOWER = tk.Frame(master = self, bd = 2 )#, bg = 'Red')
         self.FrameLOWER.configure(height = self.height/2 ,width = self.width)
         self.FrameLOWER.pack( )
         #____Summary_Frame___
         self.summary = tk.StringVar()
-        self.summaryFrame = tk.Frame(master = self.FrameLOWER, bd = 2 )#)#, bg = 'Orange')
+        self.summaryFrame = tk.Frame(master = self.FrameLOWER, bd = 2 )#, bg = 'Orange')
         self.summaryFrame.configure(height = self.height/2 , width = (80/100)*self.width)
         self.summaryFrame.grid_propagate(0)
         self.summaryFrame.pack(side = tk.LEFT)
