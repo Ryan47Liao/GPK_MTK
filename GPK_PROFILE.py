@@ -30,11 +30,9 @@ class PROFILE:
         self.RSA_init(password)
         
         #________________________Other Features__________________________#
-        self.mtk_token = None 
         self.todos = GPk_Mtk_todoList()
-        self.OKR = OKR_Plan()
-        self.inventory = Inventory()
-        
+        # self.OKR = OKR_Plan()
+        # self.inventory = Inventory()
         
     def RSA_init(self,password:int)->None:
         "Generate a pair of Random Keys"

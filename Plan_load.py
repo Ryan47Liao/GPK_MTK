@@ -148,22 +148,22 @@ class Load:
                 if self.WeekObjective.Priority_Task[i].Objective.split(":")[0] == Objective_ID:
                     self.WeekObjective.Priority_Task[i].progress_show()
     
-    def complete(self,Task_ID):
+    def complete(self,Task_ID,tk_pop = False):
         task_type = Task_ID.split("_")[0]
         Objective_ID = Task_ID.split("_")[1]
         KR_ID = Task_ID.split("_")[2]
         if task_type == "R":
             for i in range(len(self.WeekObjective.Recursive_Task)):
                 if self.WeekObjective.Recursive_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Recursive_Task[i].complete(KR_ID,False)
+                    self.WeekObjective.Recursive_Task[i].complete(KR_ID,False,tk_pop = tk_pop)
 
         if task_type == "S":
             for i in range(len(self.WeekObjective.Special_Task)):
                 if self.WeekObjective.Special_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Special_Task[i].complete(KR_ID)
+                    self.WeekObjective.Special_Task[i].complete(KR_ID,tk_pop = tk_pop)
             for i in range(len(self.WeekObjective.Priority_Task)):
                 if self.WeekObjective.Priority_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Priority_Task[i].complete(KR_ID)
+                    self.WeekObjective.Priority_Task[i].complete(KR_ID, tk_pop = tk_pop)
                     
                     
 #@title Day Class {display-mode: "form"}
@@ -226,37 +226,20 @@ class Day:
                     Authorized = False
                     print("Failed to load, Check docx format.(If all goals start with G)")
 
-    def show(self,progress = True):
-        box_print("Priority_Task:")
-        if self.Priority_Task != []:
-            for tasks in self.Priority_Task:
-                if tasks.KeyResults != {} or progress :
-                    print(tasks)
-                    if progress:
-                        tasks.progress_show()
-                        print("\n")
-        else: 
-            print("None")
-        box_print("Special_Task:")
-        if self.Special_Task != []:
-            for tasks in self.Special_Task:
-                if tasks.KeyResults != {} or progress :
-                    print(tasks)
-                    if progress:
-                        tasks.progress_show()
-                        print("\n")
-        else: 
-            print("None")
-        box_print("Recursive_Task:")
-        if self.Recursive_Task != []:
-            for tasks in self.Recursive_Task:
-                if tasks.KeyResults != {} or progress :
-                    print(tasks)
-                    if progress:
-                        tasks.progress_show()
-                        print("\n")
-        else: 
-            print("None")
+    def show(self,sections = ['Priority_Task','Special_Task','Recursive_Task'], progress = True):
+        if not isinstance(sections,list):
+            sections = [sections]
+        for sec in sections: 
+            box_print(f"{sec}:")
+            if eval(f"self.{sec}") != []:
+                for tasks in eval(f"self.{sec}"):
+                    if tasks.KeyResults != {} or progress :
+                        print(tasks)
+                        if progress:
+                            tasks.progress_show()
+                            print("\n")
+            else:
+                print('Empty')
             
 #@title Task Class {display-mode: "form"}
 class okr_task():
@@ -302,7 +285,8 @@ class okr_task():
             Authorized = False
             print("okr_task KeyResult set up failed, {} has wrong format".format(KeyResult))
 
-    def complete(self,KeyResult_ID,Special=True):
+    def complete(self,KeyResult_ID,Special=True,tk_pop = False):
+        from tkinter import messagebox
         if self.unchanged:
             self.num_KR = len(list(self.KeyResults.keys()))
             self.unchanged = False
@@ -311,16 +295,24 @@ class okr_task():
                 self.KeyResults.pop(KeyResult_ID)
                 self.completed_KR += 1
                 self.PG = self.completed_KR/self.num_KR
-                progress(self.PG)
+                bar = progress(self.PG)
             else: 
                 self.PG += 1/(7*self.num_KR)
                 self.KeyResults[KeyResult_ID][1].COUNT += 1
-                progress(self.PG)
+                bar = progress(self.PG)
+            if tk_pop:
+                try:
+                    messagebox.showinfo(title = 'Objective Updated', 
+                           message = f"{str(self)}\nUpdated:\n{bar}")
+                except:
+                    pass 
         except KeyError:
             print("{} no longer belong to this objective".format(KeyResult_ID))
             print("Current Key Results:")
             for ks in self.KeyResults.keys():
                 print(ks, end = ";")
+                
+        
         
 
     def progress_show(self):
@@ -452,7 +444,8 @@ def progress(value,  length=40, title = " ", vmin=0.0, vmax=1.0):
 
     sys.stdout.write("\r" + title + bar + " %.1f%%" % (value*100))
     sys.stdout.flush()
-
+    
+    return "\r" + title + bar + " %.1f%%" % (value*100)
 
 # In[20]:
 

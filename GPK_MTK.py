@@ -152,7 +152,8 @@ class MTK:
             return self._QUERY(url = f"https://www.meistertask.com/api/tasks/{task_id}",
                                   params = params)
     
-    def Post_task(self,section_id,name:str,notes:str = "",
+    #Use Lower Case to Distinguish between the two
+    def _Post_task(self,section_id,name:str,notes:str = "",
                   label_ids:[str] = [],custom_fields:[{str:str}] = [],
                  checklists:[{str:str}] = []):
         """
@@ -281,7 +282,7 @@ class GPK_MTK(MTK):
     def Post_task(self,section_id,name:str,notes:str = "",
                   custom_fields:[{str:str}] = [],checklists:[{str:str}] = []):
         self.match_labs()
-        return MTK.Post_task(self,section_id,name,notes,[self.SECTIONs_Labs[
+        return MTK._Post_task(self,section_id,name,notes,[self.SECTIONs_Labs[
             self.SECTIONs[section_id]
         ]],custom_fields,checklists)
     

@@ -6,7 +6,8 @@ from IPython.core.display import display
 from Plan_load import task
 
 class gpk_task(task):
-    def __init__(self,name,notes = None,sections = {1:'Personal Dev',2:'Carrer',3:'Health',4:'Family',5:'other'},
+    def __init__(self,name,notes = None,
+                 sections = {1:'Health',2:'Family',3:'Personal Development',4:'Carrer',5:'other'},
                  **kargs):
         """
         **kargs:

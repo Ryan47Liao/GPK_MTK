@@ -3,6 +3,7 @@ from gpkTask import gpk_task
 from Plan_load import Load
 from gpkTask import gpk_task
 from time import sleep
+import copy
 
 class GPK_MTK_Plan(GPK_MTK):
     def __init__(self,plan_path = None,api_token = None,
@@ -28,8 +29,9 @@ class GPK_MTK_Plan(GPK_MTK):
             self.Post_All() #Post all Scheduled Task into the meistertask Planner 
               
     def get_Load(self,path):
-        self.Load = Load(plan_path)
+        self.Load = Load(path)
         self.Load.get_week_objective()
+        self.Load_backup = copy.deepcopy(self.Load)
         
     def Planner_SetUp(self):
         self.RESET(name = 'OKR_Plannng',

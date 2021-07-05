@@ -6,6 +6,38 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
 NavigationToolbar2Tk)
 import copy
 import numpy as np
+import io
+import sys
+
+#
+from gpk_Score import *
+
+
+def OKRLOG_to_df(DayObject):
+    out = {'Task_Type' : [],'Objective' : [],'Section': [], 'ID' : [], 'weight' : [], 'progress' : []}
+    sections = ['Priority_Task','Special_Task','Recursive_Task']
+    for sec in sections: 
+        if eval(f"DayObject.{sec}") != []:
+            for okr_task in eval(f"DayObject.{sec}"):
+                out['Task_Type'].append(sec)
+                out['Objective'].append(okr_task.Objective)
+                out['weight'].append(okr_task.weight)
+                out['progress'].append(okr_task.PG)
+                ID = okr_task.Objective.split(':')[0]
+                out['ID'] .append(f"{sec[0]}_{ID}_K-??")
+                Sec = ID[1]
+                out['Section'].append(Sec)
+    return pd.DataFrame(out)
+                
+
+def print_collector(function,*args,**kargs):
+    "Collect the stuff that's going to be printed"
+    old_stdout = sys.stdout # Memorize the default stdout stream
+    sys.stdout = buffer = io.StringIO()
+    function(*args,**kargs)#Call Function
+    sys.stdout = old_stdout # Put the old stream back in place
+    whatWasPrinted = buffer.getvalue() # Return a str containing the entire contents of the buffer.
+    return whatWasPrinted
 
 def perfect_match(df,target)-> int :
     "Return the index of the best match of the df "
@@ -150,6 +182,7 @@ class DF_Analysis(DF_Search):
     def Plot_Date(self, n = None, sec = 'Time', df = None ,dim = 111,title = None,short = False):
         if df is None:
             df = copy.deepcopy( self.df )  
+        df = copy.deepcopy(df)
         plot_id = str(dim)[-1]
         if title is None:
             title = f'{sec} distribution for the Last {n} days'
@@ -182,7 +215,8 @@ class DF_Analysis(DF_Search):
         if title is None:
             title = f'{sec} distribution for the Last {n} weeks'
         if df is None:
-            df = copy.deepcopy( self.df )  
+            df = copy.deepcopy( self.df ) 
+        df = copy.deepcopy(df) 
         ###
         exec(f"plot{plot_id} = self.fig.add_subplot(dim,title = title)") 
         ###
@@ -218,6 +252,7 @@ class DF_Analysis(DF_Search):
         plot_id = str(dim)[-1]
         if df is None:
             df = copy.deepcopy( self.df )  
+        df = copy.deepcopy(df)
         ###
         exec(f"plot{plot_id} = self.fig.add_subplot(dim,title = title)") 
         ###
@@ -238,7 +273,8 @@ class DF_Analysis(DF_Search):
         eval(f'plot{plot_id}.set_xlabel("Month")')
         eval(f'plot{plot_id}.set_ylabel(sec)')
     
-    def Plot_Sec(self, n = None , time_frame = 'Day',sec = 'Time', shreshold = 0.2, title = None,df = None,dim = 111):
+    def Plot_Sec(self, n = None , time_frame = 'Day',sec = 'Time', 
+                 shreshold = 0.2, title = None,df = None,dim = 111):
         """
         -n: Number of time_frame to be plotted 
         -time_frame: type of time_frame, Day,Week,Month
@@ -246,7 +282,8 @@ class DF_Analysis(DF_Search):
         -shreshold: The lowest perecntage required to cause the least section to explode
         """
         if df is None:
-            df = self.df 
+            df = copy.deepcopy( self.df )  
+        df = copy.deepcopy(df)
         plot_id = str(dim)[-1]
         ###
         if title is None:
@@ -257,8 +294,8 @@ class DF_Analysis(DF_Search):
             Last_n_df = eval(f'self.Last_n_{time_frame}(n,df)')
         else:
             Last_n_df = df 
-        Last_n_df['Goal_Sec'] = [str(ID).split("_")[1][1] for ID in Last_n_df['ID']]
-        temp = pd.DataFrame(eval(f'Last_n_df.groupby(by = "Goal_Sec").{sec}.agg(sum)'))#pd.DataFrame
+        Last_n_df['Task Category'] = [str(ID).split("_")[1][1] for ID in Last_n_df['ID']]
+        temp = pd.DataFrame(eval(f'Last_n_df.groupby(by = "Task Category").{sec}.agg(sum)'))#pd.DataFrame
         temp_Dict = {Goal_sec:t for Goal_sec,t in zip([i for i in temp.index],temp[sec])}
         Labs = ['Health','Family','Personal Development','Carrer']
         X = {1:0,2:0,3:0,4:0}
@@ -275,6 +312,25 @@ class DF_Analysis(DF_Search):
     def Rest_fig(self):
         self.fig.clear()
         
+    def Plot_Score(self,Loaded,Scores = None, df = None, dim =111,title = 'Score Projection',
+                  grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'b'),"A":(85,'g'),"S":(95,'m')}):
+        if df is None:
+            df = self.df
+        if Scores is None:
+            Scores = Get_Scores(df,Loaded) #A dictionary of datetime and scores
+        LST = list(Scores.values())
+        plot1 = self.fig.add_subplot(dim,title = title)
+        #
+        Trend = trend(list(LST))
+        Now = now(list(LST))
+        #Plotting
+        WEEKDAYS = ["Mon","Tue","Wed","Thur","Fri","Sat","Sun"]
+        plot1.plot(WEEKDAYS,Now,label = "NOW")
+        plot1.plot(WEEKDAYS,Trend,label = "Projection",linestyle='dashdot')
+        for grade in grade_cutoff.keys():
+            plot1.plot(WEEKDAYS,constant_line(grade_cutoff[grade][0]),label = grade,linestyle='dashed',color = grade_cutoff[grade][1])
+        plot1.legend()
+            
 if __name__ == '__main__':
     dates = ['2021-06-20','2021-06-30','2021-07-02']
     freq = [4,2,5]

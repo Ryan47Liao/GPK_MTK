@@ -43,6 +43,8 @@ class Profile_Test:
 
 class gpk_to_do(tk.Frame):
     def __init__(self,root,geometry,callback  = None):
+        global  _tk_pop
+        _tk_pop = True
         super().__init__()
         self.root = root
         self.root.attributes("-fullscreen", True)  
@@ -220,6 +222,11 @@ class gpk_to_do(tk.Frame):
         Profile_temp = self.Main_Profile()
         #3.Complete Task
         Profile_temp.todos.complete(ID)
+        try:
+            Profile_temp.todos.Load.complete(ID,tk_pop = True)
+        except Exception as e:
+            print(f"\nFail to Update the WeekLog due to:\n{e}")
+        
         self.callback(Profile = Profile_temp, Update = True)
         #4.Update Tree
         self.todo_tree_update()
@@ -260,6 +267,7 @@ class gpk_to_do(tk.Frame):
             token = Profile_temp.todos.get_token()
             Profile_temp.todos.set_token(token)
             df = Profile_temp.todos.Task_today()
+            print(df)
             
             #2.Modify Profile 
             for idx in df.index:
@@ -319,7 +327,12 @@ class gpk_to_do(tk.Frame):
         self.Analysis.fig.clear()
         self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.todos, dim = 131 , title = 'Current Time Distribution')
         self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 133,title = 'History Time Distribution')
-        self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 132, short = True)
+        #self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 132, short = True)
+        try:
+            self.Analysis.Plot_Score(df = PROFILE.todos.Archive,Loaded = PROFILE.todos.Load_backup,
+                                 dim = 132)
+        except AttributeError:
+            pass 
         
                 
     def _draw(self):

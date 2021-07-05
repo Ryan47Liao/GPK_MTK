@@ -91,10 +91,13 @@ def pred_{sec}(x):
             Profile = self.call_back(Return = True)
             true_idx = perfect_match(df = Profile.todos.Archive,
                                      target = df.iloc[tree_index])
-            
+            print(f"Try to delete Task at index {true_idx}")
+            if not isinstance(true_idx,int):
+                true_idx = int(true_idx)
             #Update the Profile 
-            Profile.todos.Archive = Profile.todos.Archive.drop(true_idx)
-            print(f"Task at index {true_idx} deleted")
+            Profile.todos.Archive = Profile.todos.Archive.drop(
+                Profile.todos.Archive.index[true_idx])
+            print(f"Task at index {true_idx} DELETED")
             self.call_back(Profile,Update = True)
             #Update BOTH TreeView
             
