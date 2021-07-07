@@ -4,13 +4,14 @@ from tkinter import messagebox
 from PIL import ImageTk,Image
 import datetime
 import os
-
+from tkinter import simpledialog
 
 
 from gpk_utilities import *
 from GPK_PROFILE import PROFILE
 from GPK_PROFILE import Gpk_ToDoList
 from gpkTask import gpk_task
+from gpk_Score import score_okr
         
 class Profile_Test:
     def __init__(self,path = None, name = None):
@@ -181,7 +182,7 @@ class gpk_to_do(tk.Frame):
                 else:
                     getattr(messagebox,'showwarning')("Wrong Project",
                             f"Current Project is {current_project}.\n Please first select (or create) Project MTK_OKR in the Week Panel first.")
-              
+                    self.callback(call_frame_name = 'gpk_mtk_frame')
         
     
     def add(self):
@@ -220,6 +221,12 @@ class gpk_to_do(tk.Frame):
         ID = self.Id_entry.get()
         #2.Fetch Profile
         Profile_temp = self.Main_Profile()
+        #2.5: Update Time 
+        Time_took = float(simpledialog.askstring("Input", f"How many hours does Task {ID} Took?",
+                                parent=self))
+        df = Profile_temp.todos.todos 
+        idx = df[df['ID'] == ID].index[0]
+        df.at[idx,'Time'] = Time_took
         #3.Complete Task
         Profile_temp.todos.complete(ID)
         try:
@@ -236,9 +243,12 @@ class gpk_to_do(tk.Frame):
         
     def todo_summary(self):
         Profile_temp = self.callback(Return = True)
+        score = score_okr(self.callback(Return = True).todos.Load)
         self.summary.set(f"""
-                    Total Rewards:  {sum(Profile_temp.todos.todos['Time'])},  Total Time:  {sum(Profile_temp.todos.todos['Reward'])}
-                        """)
+                    Total Time:  {sum(Profile_temp.todos.todos['Time'])},\
+\tTotal Rewards:  {sum(Profile_temp.todos.todos['Reward'])}\
+\tSCORE: {score}
+                          """)
         self.CF_refresh()
 
     def check_mtk_sync_status(self):
@@ -326,7 +336,72 @@ class gpk_to_do(tk.Frame):
         except AttributeError:
             pass 
         
+    def IMPORT(self):
+        "Fetch Tasks from okr_plan"
+        #1.Check if okr_plan is setup, warn otherwise
+        try:
+            PROFILE = self.callback(Return = True)
+            Plan = PROFILE.okr_plan 
+        except AttributeError:
+            if getattr(messagebox,'askokcancel()')("Error!OKR Plan Not Set Up",
+            f"Would you like to set up the Plan for this week?"):
+                self.callback(call_frame_name  = 'gpk_weekPlanning')
+            return     
+        #2.Fetch tasks planned today as PUSHLIST
+        D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+        wkday = D[weekday_today()]
+        self.PUSHLIST = copy.deepcopy(Plan[wkday]) #a List of Gtasks 
+        #3.Identify the tasks in the Archive,remove them from the PUSHLIST
+        Analysis = DF_Analysis(PROFILE.todos.Archive)
+        IDs_Done = list(Analysis.Last_n_day(7)['ID'])
+        for Gtask in self.PUSHLIST:
+            if Gtask.ID in IDs_Done:
+                self.PUSHLIST.remove(Gtask)
+                print(f'Task ID {Gtask.ID} removed since recent completion')
                 
+        #3.5: Identify the tasks in the todolist ,remove them from the PUSHLIST
+        IDs_exist = list(PROFILE.todos.todos['ID'])
+        for Gtask in self.PUSHLIST:
+            if Gtask.ID in IDs_exist:
+                self.PUSHLIST.remove(Gtask)
+                print(f'Task ID {Gtask.ID} removed since Existing Task')
+        #4.Push all tasks from PUSHLIST into todo list (The method automatically filter same ID) 
+        for Gtask in self.PUSHLIST:
+            PROFILE.todos.add_gpkTask(Gtask)
+        self.callback(PROFILE,Update = True)
+        #5.Reload Tree
+        self.todo_tree_update()
+        #6.Update Summary
+        self.todo_summary()
+        
+        #7.If Applicable,Sync with MTK:
+        if self.sync_status.get():
+            PROFILE = self.callback(Return = True)
+            current_project = PROFILE.todos.PROJECTs[PROFILE.todos.project_id]
+            if  current_project == 'MTK_OKR':
+                for Gtask in self.PUSHLIST:
+                    sec_id = PROFILE.todos.Get_Sec_ID(Gtask.section) 
+                    print(f"POST Task {Gtask} \nto Section {Gtask.section} with sec_id:{sec_id}")
+                    count_down = 3
+                    Posted = False
+                    while count_down>= 0 and not Posted:
+                        try:
+                            PROFILE.todos.Post_task(section_id = sec_id, 
+                                                    name = Gtask.name, notes = str(Gtask))
+                            Posted = True
+                        except Exception as e:
+                            print(f"Error,Try again in 3 secs.\n Exception:{e}")
+                            count_down -= 1
+                            sleep(3)
+                    if not Posted:
+                        getattr(messagebox,'showwarning')("Sync Error",
+                        f"Due to internet connection,Sync of Task {Gtask.ID} Failed.\nPlease delete task you wish to sync and [IMPORT] again later.")
+            else:
+                getattr(messagebox,'showwarning')("Wrong Project",
+                        f"Current Project is {current_project}.\n Please first select (or create) Project MTK_OKR in the Week Panel first.")
+                self.callback(call_frame_name = 'gpk_mtk_frame')
+            
+    
     def _draw(self):
         ###Upper Frame###
         self.FrameUPPER = tk.Frame(master = self, bd = 20 )#, bg = 'Blue')
@@ -371,9 +446,9 @@ class gpk_to_do(tk.Frame):
 
         base = 1
         self.Id_label.grid(padx = 5, pady = 10, row = base + 0, column = 0)
-        self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1)
+        self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1 )
         self.name_label.grid(padx = 5, pady = 10,row = base +1, column = 0)
-        self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1)
+        self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1,ipadx = 30)
         self.time_label .grid(padx = 5, pady = 10,row = base +2, column = 0)
         self.time_entry.grid(padx = 5, pady = 10,row = base +2, column = 1)
         self.Dif_label.grid(padx = 5, pady = 10,row = base +3, column = 0)
@@ -411,9 +486,13 @@ class gpk_to_do(tk.Frame):
         self.controlFrame.grid_propagate(0)
         self.controlFrame.pack(side = tk.LEFT )
         # 
-        #self.spacer2 = tk.Label(master =self.controlFrame)
+#self.spacer2 = tk.Label(master =self.controlFrame)
         self.spacer = tk.Label(master = self.controlFrame, text = '')
-        self.spacer.grid(row = 0,column = 0 , pady = 50, columnspan = 2)
+        self.spacer.grid(row = 0,column = 0 , pady = 20, columnspan = 2)
+        self.import_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/Import_icon.png"))
+        self.Import_btn = tk.Button(self.controlFrame,image = self.import_img)
+        self.Import_btn.config(command = self.IMPORT)
+        ###
         self.img_submit = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sumbit_icon_p8d_icon.ico"))
         self.Submit_btn = tk.Button(bd = 2, master =self.controlFrame, image =  self.img_submit, command = self.submit)
         self.img_add = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/add_task_GGR_icon.ico"))
@@ -424,23 +503,25 @@ class gpk_to_do(tk.Frame):
         self.Complete_btn = tk.Button(master =self.controlFrame, image  =  self.img_complete , command = self.complete)
         #Set Location for the buttons 
         #self.spacer2.grid(padx = 160, row =  ,column = 0 )
+        
         self.Submit_btn.grid(padx = 20, row = 1, column = 3)
         self.Add_btn.grid(padx = 20,row = 1, column = 2)
         self.Delete_btn.grid(padx = 20,row = 1, column = 1)
-        self.Complete_btn.grid(pady = 20, ipadx  =50, row = 2, column = 1,columnspan = 3)
+        self.Complete_btn.grid(pady = 20, row = 2, column = 1,columnspan = 3)
+        self.Import_btn.grid(padx = 20, row = 3, column = 1,columnspan = 3)
         
         #Add Mtk Sync Status 
         self.sync_status = tk.IntVar()
         self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status,
                                         onvalue=1, offvalue=0, command = self.check_mtk_sync_status)
-        self.sync_chbx.grid(padx = 20,row = 3, column = 1)
+        self.sync_chbx.grid(padx = 20,row = 4, column = 1)
         self.rmchbox_label = tk.Label (self.controlFrame,text = "MTK SYNC")
-        self.rmchbox_label.grid(row = 3, column = 2)
+        self.rmchbox_label.grid(row = 4, column = 2)
         #Add Sync Button 
         self.sync_ref_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
         self.SYNC_btn = tk.Button(master =self.controlFrame, image  =  self.sync_ref_img , 
                                   command = self.mtk_sync)
-        self.SYNC_btn.grid(row = 3, column = 3)
+        self.SYNC_btn.grid(pady = 20, row = 4, column = 3)
         
         
 if __name__ == '__main__':

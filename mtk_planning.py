@@ -5,6 +5,8 @@ from gpkTask import gpk_task
 from time import sleep
 import copy
 
+from gpk_utilities import *
+
 class GPK_MTK_Plan(GPK_MTK):
     def __init__(self,plan_path = None,api_token = None,
                  project_id = 'Null',Post = False,nap = 1):
@@ -90,17 +92,6 @@ class GPK_MTK_Plan(GPK_MTK):
         
     def Task_today(self):
         "Return a data frame of the tasks of today"
-        def weekday_today(timezone = "Asia/Shanghai"):
-            "Return the weekday number of today"
-            from datetime import datetime
-            from datetime import date
-            from dateutil import tz
-    
-            timezone = tz.gettz(timezone)
-            year = int(datetime.now(timezone).year)
-            month = int(datetime.now(timezone).month)
-            day = int(datetime.now(timezone).day)
-            return(date(year, month, day).isocalendar()[2])
         
         if self.PROJECTs[int(self.project_id)] == 'OKR_Plannng':
             self.Get_info()

@@ -19,4 +19,4 @@ class gpk_dash(tk.Frame):
         #___________RightFrame______________#
         self.RightFrame = tk.Frame(master = self, bg = 'green')
         self.RightFrame.config(width = self.width/2, height = self.height)
-        self.RightFrame.pack(side = tk.LEFT, anchor = 'e')
+        self.RightFrame.pack(side = tk.LEFT, anchor = 'e') 

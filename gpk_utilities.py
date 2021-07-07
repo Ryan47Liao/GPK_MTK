@@ -12,6 +12,142 @@ import sys
 #
 from gpk_Score import *
 from Plan_load import *
+class Gpk_ToDoList:
+    def __init__(self):
+        self.todos = pd.DataFrame({"ID":[ ],"TaskName":[ ],"Reward":[ ],
+                            "Time":[ ],"Difficulty":[ ],
+                            "ObjectID":[ ],"KeyResult ID":[ ],"Task Category":[ ]})
+        self.Archive = pd.DataFrame()
+        self.task_descriptions = {}
+    
+    def reset_des(self):
+        self.task_descriptions = {}
+        print("Task Descriptions Rest")
+                
+    def add(self,task_name,task_ID,task_time,task_diff,task_des,ddl = None, RETURN = False):
+        "task_ID: S_G4-3_K1" #Special/Recurrent/Priority_Goal#_KeyResult#
+        try:
+            if task_ID  in list(self.todos['ID']):
+                print("ERROR,ID Already Exsit")
+                return 
+        except KeyError: #When it's empty 
+            print("Empty")
+        reward = self.Reward(task_time,task_diff) #calculate reward based on tasktime and difficulty
+        Category = task_ID.split("_")[1].split("-")[0][1] #Fetch Task Category Based on Task_ID format 
+        KR_ID = task_ID.split("_")[2] 
+        O_ID = task_ID.split("_")[1]
+        task = pd.DataFrame({"ID":[task_ID],"TaskName":[task_name],"Reward":[reward],
+                            "Time":[task_time],"Difficulty":[task_diff],
+                            "ObjectID":[O_ID],"KeyResult ID":[KR_ID],"Task Category":[Category],
+                            "Deadline":[ddl]})
+        try:
+            self.task_descriptions[task_ID] = task_des
+        except:
+            self.reset_des() 
+            #self.task_descriptions[task_ID] = task_des #RESET
+             
+        if RETURN:
+            return
+        else:
+            self.todos = self.todos.append(task, ignore_index=True)
+            
+    def add_gpkTask(self,Gtask):
+        self.add(task_name = Gtask.name,task_ID = Gtask.ID,
+                 task_time = float(Gtask.Time) ,
+                 task_diff = float(Gtask.Difficulty),
+                 task_des = Gtask.Description)
+      
+    
+    def Reward(self,time,difficulty):
+        "Return Rewards Based on Time and Difficulty"
+        time_lower_bound = 0.35
+        time_upper_bound = 5
+        difficulty_upper_bound = 10
+        if time < time_lower_bound:
+            time = time_lower_bound
+        if time > time_upper_bound:
+            time = time_upper_bound
+        if difficulty > difficulty_upper_bound:
+            difficulty = difficulty_upper_bound
+        difficulty = abs(difficulty)
+        reward = 3*(time**0.6*difficulty**0.4) + random.choice([-0.5,0,0.5,1,1.5,2])
+        return(round(reward))
+    
+    def idx_reset(self,df):
+        df = df.reset_index()
+        try:
+            df =  df.drop('level_0',axis = 1)
+        except KeyError:
+            pass
+        try:
+            df =  df.drop(['index'],axis = 1)
+        except KeyError:
+            pass
+        return df
+    
+        
+    def delete(self,task_ID):
+        "Delete A Task"
+        idx = self.todos.loc[self.todos['ID'] == task_ID].index 
+        self.todos = self.todos.drop(idx)
+        self.todos = self.idx_reset(self.todos)
+        try:
+            self.task_descriptions.pop(task_ID)
+        except Exception as e:
+            print(f'ERROR!ID {task_ID} does not exist.')
+            print(f"Exception Raised:{e}")
+        
+        
+    def edit(self,task_name,task_ID,task_time,task_diff,task_des,ddl):
+        "Edit An Existing Task"
+        self.delete(task_ID)
+        self.add(task_name,task_ID,task_time,task_diff,task_des,ddl)
+        
+    def complete(self,task_ID):
+        time_stamp = str(datetime.datetime.now())
+        date_today = str(datetime.datetime.now().date())    
+        week_day_today = str(datetime.datetime.now().weekday())
+        og_task = copy.deepcopy(self.todos.loc[self.todos['ID'] == task_ID])
+        og_task.insert(8,"date_done",[date_today])
+        og_task.insert(9,"week_day",[week_day_today])
+        og_task.insert(10,"time_stamp",[time_stamp])
+        try:
+            og_task.insert(11,"description",[self.task_descriptions[task_ID]])
+        except:
+            pass
+        self.Archive = self.Archive.append(og_task)
+        self.Archive = self.idx_reset(self.Archive)
+        self.delete(task_ID)
+        
+def Fill_date(Dict,start = None,base_line = 0):
+    if start is None:
+        start = str(Last_monday())
+    most_recent = min(Dict.keys(),key = DATE)#lambda L:[DATE(i) for i in L])
+    assert DATE(start) <= DATE(most_recent),'Start date must be no larger than the existing smallest date'
+    date = start 
+    OUT = {}
+    while DATE(date) <= DATE(most_recent):
+        date = str(tmr(date)) #
+        OUT[date] = base_line
+    OUT = {**OUT,**Dict}
+    return OUT
+
+def Fill_date(Dict,start = None,base_line = 0):
+    if start is None:
+        start = str(Last_monday())
+    most_recent = min(Dict.keys(),key = DATE)#lambda L:[DATE(i) for i in L])
+    if DATE(start) <= DATE(most_recent):
+        date = start 
+        OUT = {start:base_line}
+        while DATE(date) < DATE(most_recent):
+            date = str(tmr(date)) #
+            OUT[date] = base_line
+        OUT = {**OUT,**Dict}
+        return OUT
+    else:
+        return Dict
+        
+
 def wkday_to_date(wkday):
     "Convert a Wkday of this week into its date"
     DICT = {}
@@ -26,6 +162,18 @@ def wkday_to_date(wkday):
         return str(yesterday(str(Last_monday())))
     return DICT_new[wkday]
 
+def weekday_today(timezone = "Asia/Shanghai"):
+    "Return the weekday number of today"
+    from datetime import datetime
+    from datetime import date
+    from dateutil import tz
+
+    timezone = tz.gettz(timezone)
+    year = int(datetime.now(timezone).year)
+    month = int(datetime.now(timezone).month)
+    day = int(datetime.now(timezone).day)
+    return(date(year, month, day).isocalendar()[2])
+        
 def Plan_to_df(Profile):
     plan = Profile.okr_plan
     todo = Gpk_ToDoList()
@@ -381,6 +529,9 @@ class DF_Analysis(DF_Search):
             df = self.df
         if Scores is None:
             Scores = Get_Scores(df,Loaded) #A dictionary of datetime and scores
+        print(Scores)
+        Scores = Fill_date(Scores)
+        print(Scores)
         LST = list(Scores.values())
         plot1 = self.fig.add_subplot(dim,title = title)
         #
@@ -424,3 +575,4 @@ if __name__ == '__main__':
     # Loaded.get_week_objective()
     # OUT = Fetch_plan_null(Loaded)
     # print(OUT)
+    print(weekday_today())

@@ -160,7 +160,7 @@ class Gpk_ToDoList:
         
     def complete(self,task_ID):
         time_stamp = str(datetime.datetime.now())
-        date_today = str(datetime.datetime.now().date())
+        date_today = str(datetime.datetime.now().date())    
         week_day_today = str(datetime.datetime.now().weekday())
         og_task = copy.deepcopy(self.todos.loc[self.todos['ID'] == task_ID])
         og_task.insert(8,"date_done",[date_today])

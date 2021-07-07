@@ -203,7 +203,7 @@ class GPK_MTK(MTK):
                 self.Get_info() #Collect Info about the account 
 
         
-    def RESET(self,name = 'MTK_OKR', sections = ['Upcoming','In Progress','Done Today','Personal Dev',
+    def RESET(self,name = 'MTK_OKR', sections = ['Upcoming','In Progress','Done Today','Personal Development',
                               'Carrer','Health','Family','Other'], 
               colors = ['orange','red','grass green','turquoise','purple','grass green',
                        'orange','blue'],

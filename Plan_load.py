@@ -157,10 +157,12 @@ class Load:
                 if self.WeekObjective.Recursive_Task[i].Objective.split(":")[0] == Objective_ID:
                     self.WeekObjective.Recursive_Task[i].complete(KR_ID,False,tk_pop = tk_pop)
 
-        if task_type == "S":
+        elif task_type == "S":
             for i in range(len(self.WeekObjective.Special_Task)):
                 if self.WeekObjective.Special_Task[i].Objective.split(":")[0] == Objective_ID:
                     self.WeekObjective.Special_Task[i].complete(KR_ID,tk_pop = tk_pop)
+
+        elif task_type == "P":
             for i in range(len(self.WeekObjective.Priority_Task)):
                 if self.WeekObjective.Priority_Task[i].Objective.split(":")[0] == Objective_ID:
                     self.WeekObjective.Priority_Task[i].complete(KR_ID, tk_pop = tk_pop)
