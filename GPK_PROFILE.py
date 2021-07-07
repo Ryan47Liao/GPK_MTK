@@ -105,6 +105,13 @@ class Gpk_ToDoList:
             return
         else:
             self.todos = self.todos.append(task, ignore_index=True)
+            
+    def add_gpkTask(self,Gtask):
+        self.add(task_name = Gtask.name,task_ID = Gtask.ID,
+                 task_time = float(Gtask.Time) ,
+                 task_diff = float(Gtask.Difficulty),
+                 task_des = Gtask.Description)
+      
     
     def Reward(self,time,difficulty):
         "Return Rewards Based on Time and Difficulty"

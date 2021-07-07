@@ -11,7 +11,31 @@ import sys
 
 #
 from gpk_Score import *
+from Plan_load import *
+def wkday_to_date(wkday):
+    "Convert a Wkday of this week into its date"
+    DICT = {}
+    D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+    date = str(Last_monday())
+    while str(date) != str(Next_Sunday()):
+        DICT[str(date)] = D[int(DATE(date).weekday()+1)]
+        date = str(tmr(date))
+    DICT[str(date)] = D[int(DATE(date).weekday()+1)]
+    DICT_new = {k:v for v,k in DICT.items()}
+    if wkday == 'Inbox':
+        return str(yesterday(str(Last_monday())))
+    return DICT_new[wkday]
 
+def Plan_to_df(Profile):
+    plan = Profile.okr_plan
+    todo = Gpk_ToDoList()
+    TEMP = []
+    for sec in plan: 
+        for Gtask in plan[sec]:
+            todo.add_gpkTask(Gtask)
+            TEMP.append(wkday_to_date(sec))
+    todo.todos['Plan_at'] = TEMP
+    return todo.todos
 
 def OKRLOG_to_df(DayObject):
     out = {'Task_Type' : [],'Objective' : [],'Section': [], 'ID' : [], 'weight' : [], 'progress' : []}
@@ -111,6 +135,8 @@ class DF_Search:
     
 def GAP_Filler(dates,freq):
     "Take a list of date Strs (Potentially Gapped),and return a patched one, assuming the are in dec order (Recent to Last)"
+    og_dates = copy.copy(dates)
+    og_freq = copy.copy(freq)
     def yesterday(date_str):
         return (DATE(date_str) - datetime.timedelta(days = 1))
     
@@ -149,6 +175,8 @@ def GAP_Filler(dates,freq):
             date = str(NEXT(date))
             dates_out.append(date)
             freq_out.append(0)
+    dates_out.append(og_dates[-1])
+    freq_out.append(og_freq[-1])
     return dates_out,freq_out
 
 class DF_Analysis(DF_Search):
@@ -160,14 +188,14 @@ class DF_Analysis(DF_Search):
         self.df = df 
         
         
-    def Last_n_day(self,n,df = None):
-        return self.SEARCH('date_done',lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(days = n)).date(),df = df)
+    def Last_n_day(self,n,df = None,Group = 'date_done'):
+        return self.SEARCH(Group,lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(days = n)).date(),df = df)
     
-    def Last_n_week(self,n,df = None):
-        return self.SEARCH('date_done',lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(weeks = n)).date(),df = df)
+    def Last_n_week(self,n,df = None,Group = 'date_done'):
+        return self.SEARCH(Group,lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(weeks = n)).date(),df = df)
     
-    def Last_n_month(self,n,df = None):
-        return self.SEARCH('date_done',lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(days = n*30)).date(),df = df)
+    def Last_n_month(self,n,df = None,Group = 'date_done'):
+        return self.SEARCH(Group,lambda date: DATE(date) >= (datetime.datetime.now() - datetime.timedelta(days = n*30)).date(),df = df)
     
     def fig_preview(self,fig = None, geom = '1000x1000'):
         if fig is None:
@@ -179,7 +207,42 @@ class DF_Analysis(DF_Search):
         canvas.get_tk_widget().grid(row = 0, column = 0)
         window.mainloop()
         
-    def Plot_Date(self, n = None, sec = 'Time', df = None ,dim = 111,title = None,short = False):
+    def Plot_DateFrame(self, n = None, sec = 'Time', df = None ,dim = 111,title = None,
+                       short = False, Group = 'date_done', 
+                       key = lambda L: [DATE(i) for i in L]):
+        if df is None:
+            df = copy.deepcopy( self.df )  
+        df = copy.deepcopy(df)
+        plot_id = str(dim)[-1]
+        if Group == 'date_done':
+            DateFrame = 'Day'
+        else:
+            DateFrame = Group
+        if title is None:
+            title = f'{sec} distribution for the Last {n} {DateFrame}s'
+        exec(f"plot{plot_id} = self.fig.add_subplot(dim,title = title)") 
+        ###
+        #
+        if n is not None:
+            Last_n_df = self.Last_n_day(n,df,Group)
+        else:
+            Last_n_df = df 
+        print(Last_n_df)
+        temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
+        res = pd.DataFrame(temp).sort_values(by = Group, key = key,ascending = True)
+        #Finally:
+        dates = [i for i in res.index]
+        freq = res[sec]
+        dates,freq = GAP_Filler(dates,freq)#Fill the potential Gaps
+        if short:
+            dates = [date.split('-')[1]+'.'+date.split('-')[2] for date in dates]
+        eval(f'plot{plot_id}.bar(dates,freq)')
+        eval(f'plot{plot_id}.set_xlabel(Group)')
+        eval(f'plot{plot_id}.set_ylabel(sec)')
+        
+        
+    def Plot_Date(self, n = None, sec = 'Time', df = None ,dim = 111,title = None,short = False,
+                  Group = 'date_done'):
         if df is None:
             df = copy.deepcopy( self.df )  
         df = copy.deepcopy(df)
@@ -189,11 +252,11 @@ class DF_Analysis(DF_Search):
         exec(f"plot{plot_id} = self.fig.add_subplot(dim,title = title)") 
         #
         if n is not None:
-            Last_n_df = self.Last_n_day(n,df)
+            Last_n_df = self.Last_n_day(n,df,Group)
         else:
             Last_n_df = df 
         print(Last_n_df)
-        temp = eval(f"Last_n_df.groupby('date_done').{sec}.agg(sum)")
+        temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
         res = pd.DataFrame(temp).sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = True)
         print(res)
         #Finally:
@@ -206,7 +269,7 @@ class DF_Analysis(DF_Search):
         eval(f'plot{plot_id}.set_xlabel("Date")')
         eval(f'plot{plot_id}.set_ylabel(sec)')
     
-    def Plot_Week(self,n = None, sec = 'Time', df = None,dim = 111 ,title = None):
+    def Plot_Week(self,n = None, sec = 'Time', df = None,dim = 111 ,title = None,Group = 'Week'):
         def Cal_Week(Date_0,date):
             delta = DATE(Date_0) - DATE(date)
             return -round((delta.days/7))
@@ -221,7 +284,7 @@ class DF_Analysis(DF_Search):
         exec(f"plot{plot_id} = self.fig.add_subplot(dim,title = title)") 
         ###
         if n is not None:
-            Last_n_df = self.Last_n_week(n,df)
+            Last_n_df = self.Last_n_week(n,df,Group)
         else:
             Last_n_df = df 
         
@@ -229,7 +292,7 @@ class DF_Analysis(DF_Search):
         Most_recent = df.sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = False).iloc[0]['date_done']
         Last_n_df['Week'] = [Cal_Week(Most_recent, date) for date in list(Last_n_df['date_done'])] 
         
-        temp = eval(f"Last_n_df.groupby('Week').{sec}.agg(sum)")
+        temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
         res = pd.DataFrame(temp).sort_values(by = 'Week', key = lambda L: [int(i) for i in L],ascending = False)
         #Finally:
         weeks = [i for i in res.index]
@@ -239,7 +302,7 @@ class DF_Analysis(DF_Search):
         eval(f'plot{plot_id}.set_xlabel("Week")')
         eval(f'plot{plot_id}.set_ylabel(sec)')
     
-    def Plot_Month(self,n = None, sec = 'Time', df = None,dim = 111,title = None):
+    def Plot_Month(self,n = None, sec = 'Time', df = None,dim = 111,title = None,Group = 'Month'):
         def Cal_Month(Date_0,date):
             from math import floor
             year_d = DATE(Date_0).year - DATE(date).year
@@ -263,7 +326,7 @@ class DF_Analysis(DF_Search):
         Most_recent = df.sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = False).iloc[0]['date_done']
         Last_n_df['Month'] = [Cal_Month(Most_recent, date) for date in list(Last_n_df['date_done'])] 
         
-        temp = eval(f"Last_n_df.groupby('Month').{sec}.agg(sum)")
+        temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
         res = pd.DataFrame(temp).sort_values(by = 'Month', key = lambda L: [int(i) for i in L],ascending = False)
         #Finally:
         months = [i for i in res.index]
@@ -274,7 +337,7 @@ class DF_Analysis(DF_Search):
         eval(f'plot{plot_id}.set_ylabel(sec)')
     
     def Plot_Sec(self, n = None , time_frame = 'Day',sec = 'Time', 
-                 shreshold = 0.2, title = None,df = None,dim = 111):
+                 shreshold = 0.2, title = None,df = None,dim = 111,Group = 'date_done'):
         """
         -n: Number of time_frame to be plotted 
         -time_frame: type of time_frame, Day,Week,Month
@@ -331,9 +394,33 @@ class DF_Analysis(DF_Search):
             plot1.plot(WEEKDAYS,constant_line(grade_cutoff[grade][0]),label = grade,linestyle='dashed',color = grade_cutoff[grade][1])
         plot1.legend()
             
+            
+def Fetch_plan_null(Loaded):
+#     Loaded = self.callback(Return = True).todos.Load 
+    D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+    OUT = {'Inbox':[]}
+    for day in D.values():
+        OUT[day] = []
+    for sec in ['Priority_Task','Special_Task']:
+        for Objective in eval(f'Loaded.WeekObjective.{sec}'):
+            O_ID = Objective.Objective.split(":")[0]
+            for KR in Objective.KeyResults:
+                task_id = f"{sec[0]}_{O_ID}_{KR}"
+                task_name = Objective.KeyResults[KR][0]
+                temp = Objective.KeyResults[KR][1]
+                Gtask = gpk_task(name = task_name,ID=task_id,
+                                Difficulty = temp['difficulty'],Time = temp['time'],Reward = temp['reward'],
+                                Description = "")
+                OUT['Inbox'].append(Gtask)
+    return OUT
+
 if __name__ == '__main__':
-    dates = ['2021-06-20','2021-06-30','2021-07-02']
-    freq = [4,2,5]
+    dates = ['2021-07-04', '2021-07-05', '2021-07-06', '2021-07-09', '2021-07-11']
+    freq = [1,4,6,2,5]
     print( GAP_Filler(dates,freq) )
     dates = ['2021-07-02','2021-06-30','2021-06-20']
     print( GAP_Filler(dates,freq) )
+    # Loaded = Load('OKRLOG_S3_W1.docx')
+    # Loaded.get_week_objective()
+    # OUT = Fetch_plan_null(Loaded)
+    # print(OUT)

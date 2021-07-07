@@ -264,10 +264,7 @@ class gpk_to_do(tk.Frame):
             Profile_temp = self.Main_Profile()
             #1.Get Data Frame of Today's Plan from MTK methods 
             #try:
-            token = Profile_temp.todos.get_token()
-            Profile_temp.todos.set_token(token)
             df = Profile_temp.todos.Task_today()
-            print(df)
             
             #2.Modify Profile 
             for idx in df.index:
@@ -287,11 +284,6 @@ class gpk_to_do(tk.Frame):
             #5.Update Summary
             self.todo_summary()
             
-        #except AttributeError as e:
-            # print("You need to first Set up the MTK Token")
-            # print(e)
-            # #First Set Up The MTK 
-            self.todo_summary()
         else:
             getattr(messagebox,'showwarning')("Mtk Sync Offline",
                                               "Check the Box on the left to enable it")

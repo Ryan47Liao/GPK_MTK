@@ -15,7 +15,8 @@ from gpk_mtk_frame import gpk_mtk_frame
 from gpk_todo_frame import gpk_to_do
 from gpk_archive_frame import gpk_archive
 from gpk_stat_frame import gpk_analysis
-from gpk_weekView_frame import gpk_weekView
+from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning
+from gpk_dashboard_frame import gpk_dash
 
 class gpk_Shell:
     def __init__(self):
@@ -323,9 +324,9 @@ class gpk_Main():
         self.gpk_weekView = gpk_weekView(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
         self.FRAMES.append("gpk_weekView")
         
-        # menu_Week.add_command(label='Week Planning', command = lambda: self.call_frame('gpk_weekPlanning'))
-        # self.gpk_weekPlanning = gpk_weekPlanning(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
-        # self.FRAMES.append("gpk_weekPlanning")
+        menu_Week.add_command(label='Week Planning', command = lambda: self.call_frame('gpk_weekPlanning'))
+        self.gpk_weekPlanning = gpk_weekPlanning(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.FRAMES.append("gpk_weekPlanning")
         #_________________Menu->STORE________________________
         menu_Store = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Store, label='Store')
@@ -388,28 +389,6 @@ class gpk_okr(tk.Frame):
     def _draw(self):
         self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_week')
         self.to_dos.pack()
-
-
-class gpk_dash(tk.Frame):
-    def __init__(self,root,geometry,callback  = None):
-        super().__init__(bg = 'green')
-        self.root = root
-        self.callback = callback
-        self.height = geometry['height']
-        self.width = geometry['width']
-        self._draw()
-        
-    def _draw(self):
-        #___________LeftFrame______________#
-        self.LeftFrame = tk.Frame(master = self, bg = 'red')
-        self.LeftFrame.config(width = self.width/2, height = self.height)
-        self.LeftFrame.pack(side = tk.LEFT)
-        #___________RightFrame______________#
-        self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_okr')
-        self.to_dos.pack()
-
-# In[17]:
-
 
 class gpk_store(tk.Frame):
     def __init__(self,root):

@@ -34,7 +34,7 @@ class GPK_MTK_Plan(GPK_MTK):
         self.Load_backup = copy.deepcopy(self.Load)
         
     def Planner_SetUp(self):
-        self.RESET(name = 'OKR_Plannng',
+        self.RESET(name = 'OKR_Planner',
                        sections = ['Inbox','monday','tuesday','wednesday',
                                   'thursday','friday','saturday','sunday'], 
                   colors = ['orange','red','grass green','turquoise','purple','grass green',

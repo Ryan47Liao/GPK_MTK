@@ -316,7 +316,7 @@ class okr_task():
         
 
     def progress_show(self):
-        progress(self.PG)
+        return progress(self.PG)
 
     def __repr__(self):
         rep = self.Objective + "\nweight:" + str(self.weight)
