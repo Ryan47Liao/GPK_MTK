@@ -9,7 +9,7 @@ from time import sleep
 
 from gpkTask import gpk_task
 from tkList import tkLIST 
-
+from gpk_recurrent import gpk_Recur_frame
 
 class gpk_weekView(tk.Frame):
     def __init__(self,root,geometry,callback  = None):
@@ -81,6 +81,7 @@ class gpk_weekView(tk.Frame):
     def Text_refresh(self):
         self.OKRLOG_Text.delete("1.0","end")
         self.OKRLOG_Text.insert("1.0", self.OKRVIEW.get())
+            
         
     def _draw(self):
         #__________________LeftFrame_____________________#
@@ -126,9 +127,12 @@ class gpk_weekView(tk.Frame):
         self.RT_Rbtn.pack(padx = 5, pady = 5)#.gird(row = 3, column = 1,padx = 5, pady = 5)
                 ###___Buttons___###
         self.RT_setting_btn = tk.Button(self.InterFrame,text = 'Recursive_Task Settings')
+        self.RT_setting_btn.config(command = lambda : self.callback(call_frame_name = 'gpk_Recur_frame'))
+        
         self.Import_btn = tk.Button(self.InterFrame,text = 'Import OKR Week Agenda',
                                     command = self.Load_Plan)
         self.Report_btn = tk.Button(self.InterFrame,text = 'Export Report')
+
         
         self.RT_setting_btn.pack(padx = 5, pady = 5)#.gird(row = 4, column = 0,padx = 5, pady = 5)
         self.Import_btn.pack(padx = 5, pady = 5)#.gird(row = 5, column = 1,padx = 5, pady = 5)
@@ -143,6 +147,8 @@ class gpk_weekView(tk.Frame):
             self.CF_update()
         except AttributeError:
             pass 
+        
+        
 class gpk_weekPlanning(tk.Frame):
     def __init__(self,root,geometry,callback  = None):
         super().__init__()
@@ -174,7 +180,7 @@ class gpk_weekPlanning(tk.Frame):
                     return task 
             return None
         
-    def show_detail(self):
+    def show_detail(self,event = None):
         PROFILE = self.callback(Return = True)
         self.PlanView.retrieve() #Update the selected 
         ID = self.PlanView.selected.get().split(":")[1].strip(" ")
@@ -289,8 +295,7 @@ class gpk_weekPlanning(tk.Frame):
         Profile = self.callback(Return = True)
         Profile.todos.get_Load(self.file_path)
         self.callback(Profile,Update = True) 
-    
-    
+        
     def IMPORT(self):
         self.PlanView.LB_Clear()
         self.ReLoad()
@@ -302,11 +307,11 @@ class gpk_weekPlanning(tk.Frame):
         Plan = Fetch_plan_null(Loaded)
         Profile.okr_plan = Plan
         self.callback(Profile,Update = True)
+        self.Get_Option()
         self.LB_Ref()
         self.CF_update(master = self.RightFrame ) 
     
     def move_to(self,ID,Section):
-        print(ID)
         Profile = self.callback(Return = True) 
         found = False
         if Section != 'Plan Not Loaded':
@@ -329,9 +334,6 @@ class gpk_weekPlanning(tk.Frame):
         self.CF_update(master = self.CF)
         
     def MOVE(self):
-        self.PlanView.retrieve()
-        self.show_detail()
-        print(self.PlanView.selected.get())
         ID = self.PlanView.selected.get().split(':')[1]
         Sec = self.day_option.get()
         if ID == 'Select and Submit to update':
@@ -345,8 +347,11 @@ class gpk_weekPlanning(tk.Frame):
     def Get_Option(self):
         try:
             self.Options = list(self.callback(Return = True).okr_plan.keys())
+            self.day_option = ttk.Combobox(self.Control_Frame, values = self.Options)
+            self.day_option.grid(row = 2,column = 2)
         except:
             self.Options = ['Plan Not Loaded']
+            print('Plan Not Loaded')
             
     ## Adding Canvas Mods:
     def CF_create(self,master,hc = 2/3, wc = 2/5,side = None):
@@ -403,7 +408,8 @@ class gpk_weekPlanning(tk.Frame):
                                view_frame = self.Oview , header = [
         'Inbox','monday','tuesday','wednesday',
          'thursday','friday','saturday','sunday'])
-        self.PlanView.sub_bttn.config(command = self.show_detail)
+        for listbox in self.PlanView.LISTBOXes:
+            listbox.bind("<<ListboxSelect>>", self.show_detail)
         try:
             self.LB_Ref()
         except AttributeError:

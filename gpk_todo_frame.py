@@ -44,7 +44,6 @@ class Profile_Test:
 
 class gpk_to_do(tk.Frame):
     def __init__(self,root,geometry,callback  = None):
-        global  _tk_pop
         _tk_pop = True
         super().__init__()
         self.root = root
@@ -243,7 +242,10 @@ class gpk_to_do(tk.Frame):
         
     def todo_summary(self):
         Profile_temp = self.callback(Return = True)
-        score = score_okr(self.callback(Return = True).todos.Load)
+        try:
+            score = score_okr(self.callback(Return = True).todos.Load)
+        except AttributeError:
+            score = 0
         self.summary.set(f"""
                     Total Time:  {sum(Profile_temp.todos.todos['Time'])},\
 \tTotal Rewards:  {sum(Profile_temp.todos.todos['Reward'])}\
@@ -327,9 +329,14 @@ class gpk_to_do(tk.Frame):
     def CF_draw(self):
         PROFILE = self.Main_Profile()
         self.Analysis.fig.clear()
-        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.todos, dim = 131 , title = 'Current Time Distribution')
-        self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 133,title = 'History Time Distribution')
-        #self.Analysis.Plot_Date(n=7,sec = 'Reward',df = PROFILE.todos.Archive,dim = 132, short = True)
+        try:
+            self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.todos, dim = 131 , title = 'Current Time Distribution')
+        except:
+            pass 
+        try:
+            self.Analysis.Plot_Sec(sec = 'Time', df = PROFILE.todos.Archive, dim = 133,title = 'History Time Distribution')
+        except:
+            pass 
         try:
             self.Analysis.Plot_Score(df = PROFILE.todos.Archive,Loaded = PROFILE.todos.Load_backup,
                                  dim = 132)
@@ -351,14 +358,30 @@ class gpk_to_do(tk.Frame):
         D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
         wkday = D[weekday_today()]
         self.PUSHLIST = copy.deepcopy(Plan[wkday]) #a List of Gtasks 
-        #3.Identify the tasks in the Archive,remove them from the PUSHLIST
+#***2.5 Add Recursive Tasks to PUSHLIST
+#!!!2.6 Check if Profile.Recur is defined: 
+        try:
+            RECUR = PROFILE.gpk_Recur
+            List_recur = Df_to_Gtask(RECUR.task_recur_at(weekday_today()).drop('Recur_At',axis = 1)) 
+            self.PUSHLIST = [*self.PUSHLIST, *List_recur]
+        except AttributeError: 
+            Plan_recur = Fetch_plan_null(PROFILE.todos.Load,'Recursive_Task') 
+            self.PUSHLIST = [*self.PUSHLIST, *Plan_recur['Inbox']]
+        #3.Identify the tasks in the Archive, remove them from the PUSHLIST
         Analysis = DF_Analysis(PROFILE.todos.Archive)
+        #Filter the Special Tasks:
         IDs_Done = list(Analysis.Last_n_day(7)['ID'])
-        for Gtask in self.PUSHLIST:
+        for Gtask in copy.copy(self.PUSHLIST):
+            if Gtask.ID[0] != 'R' and Gtask.ID in IDs_Done:
+                self.PUSHLIST.remove(Gtask)
+                print(f'Task ID {Gtask.ID} removed since recent completion')
+        #Filter the Recursive Tasks:
+        IDs_Done = list(Analysis.Last_n_day(0)['ID']) #Done Today
+        for Gtask in copy.copy(self.PUSHLIST):
             if Gtask.ID in IDs_Done:
                 self.PUSHLIST.remove(Gtask)
                 print(f'Task ID {Gtask.ID} removed since recent completion')
-                
+           
         #3.5: Identify the tasks in the todolist ,remove them from the PUSHLIST
         IDs_exist = list(PROFILE.todos.todos['ID'])
         for Gtask in self.PUSHLIST:
@@ -414,7 +437,7 @@ class gpk_to_do(tk.Frame):
         self.treeFrame.configure(height = self.tree_height_coef*self.height,
                                   width = self.tree_width_coef*self.width)
         self.treeFrame.grid_propagate(0)
-        self.treeFrame.pack(side = tk.LEFT, pady = 10,fill = 'y' )
+        self.treeFrame.pack(side = tk.LEFT, pady = 10,fill = 'y' ,padx = 50)
         #GET Tree#
         self.todo_tree_update()
         #____Editing_Frame___
@@ -469,7 +492,8 @@ class gpk_to_do(tk.Frame):
         self.summaryFrame.configure(height = self.height/2 , width = (80/100)*self.width)
         self.summaryFrame.grid_propagate(0)
         self.summaryFrame.pack(side = tk.LEFT)
-        self.summary_label = tk.Label(master = self.summaryFrame, textvariable =  self.summary)
+        self.summary_label = tk.Label(master = self.summaryFrame, textvariable =  self.summary,
+                                      font = ('times new roman',14))
 
         self.summary_label.pack()
         try:

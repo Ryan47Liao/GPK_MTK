@@ -12,125 +12,16 @@ import sys
 #
 from gpk_Score import *
 from Plan_load import *
-class Gpk_ToDoList:
-    def __init__(self):
-        self.todos = pd.DataFrame({"ID":[ ],"TaskName":[ ],"Reward":[ ],
-                            "Time":[ ],"Difficulty":[ ],
-                            "ObjectID":[ ],"KeyResult ID":[ ],"Task Category":[ ]})
-        self.Archive = pd.DataFrame()
-        self.task_descriptions = {}
-    
-    def reset_des(self):
-        self.task_descriptions = {}
-        print("Task Descriptions Rest")
-                
-    def add(self,task_name,task_ID,task_time,task_diff,task_des,ddl = None, RETURN = False):
-        "task_ID: S_G4-3_K1" #Special/Recurrent/Priority_Goal#_KeyResult#
-        try:
-            if task_ID  in list(self.todos['ID']):
-                print("ERROR,ID Already Exsit")
-                return 
-        except KeyError: #When it's empty 
-            print("Empty")
-        reward = self.Reward(task_time,task_diff) #calculate reward based on tasktime and difficulty
-        Category = task_ID.split("_")[1].split("-")[0][1] #Fetch Task Category Based on Task_ID format 
-        KR_ID = task_ID.split("_")[2] 
-        O_ID = task_ID.split("_")[1]
-        task = pd.DataFrame({"ID":[task_ID],"TaskName":[task_name],"Reward":[reward],
-                            "Time":[task_time],"Difficulty":[task_diff],
-                            "ObjectID":[O_ID],"KeyResult ID":[KR_ID],"Task Category":[Category],
-                            "Deadline":[ddl]})
-        try:
-            self.task_descriptions[task_ID] = task_des
-        except:
-            self.reset_des() 
-            #self.task_descriptions[task_ID] = task_des #RESET
-             
-        if RETURN:
-            return
-        else:
-            self.todos = self.todos.append(task, ignore_index=True)
-            
-    def add_gpkTask(self,Gtask):
-        self.add(task_name = Gtask.name,task_ID = Gtask.ID,
-                 task_time = float(Gtask.Time) ,
-                 task_diff = float(Gtask.Difficulty),
-                 task_des = Gtask.Description)
-      
-    
-    def Reward(self,time,difficulty):
-        "Return Rewards Based on Time and Difficulty"
-        time_lower_bound = 0.35
-        time_upper_bound = 5
-        difficulty_upper_bound = 10
-        if time < time_lower_bound:
-            time = time_lower_bound
-        if time > time_upper_bound:
-            time = time_upper_bound
-        if difficulty > difficulty_upper_bound:
-            difficulty = difficulty_upper_bound
-        difficulty = abs(difficulty)
-        reward = 3*(time**0.6*difficulty**0.4) + random.choice([-0.5,0,0.5,1,1.5,2])
-        return(round(reward))
-    
-    def idx_reset(self,df):
-        df = df.reset_index()
-        try:
-            df =  df.drop('level_0',axis = 1)
-        except KeyError:
-            pass
-        try:
-            df =  df.drop(['index'],axis = 1)
-        except KeyError:
-            pass
-        return df
-    
-        
-    def delete(self,task_ID):
-        "Delete A Task"
-        idx = self.todos.loc[self.todos['ID'] == task_ID].index 
-        self.todos = self.todos.drop(idx)
-        self.todos = self.idx_reset(self.todos)
-        try:
-            self.task_descriptions.pop(task_ID)
-        except Exception as e:
-            print(f'ERROR!ID {task_ID} does not exist.')
-            print(f"Exception Raised:{e}")
-        
-        
-    def edit(self,task_name,task_ID,task_time,task_diff,task_des,ddl):
-        "Edit An Existing Task"
-        self.delete(task_ID)
-        self.add(task_name,task_ID,task_time,task_diff,task_des,ddl)
-        
-    def complete(self,task_ID):
-        time_stamp = str(datetime.datetime.now())
-        date_today = str(datetime.datetime.now().date())    
-        week_day_today = str(datetime.datetime.now().weekday())
-        og_task = copy.deepcopy(self.todos.loc[self.todos['ID'] == task_ID])
-        og_task.insert(8,"date_done",[date_today])
-        og_task.insert(9,"week_day",[week_day_today])
-        og_task.insert(10,"time_stamp",[time_stamp])
-        try:
-            og_task.insert(11,"description",[self.task_descriptions[task_ID]])
-        except:
-            pass
-        self.Archive = self.Archive.append(og_task)
-        self.Archive = self.idx_reset(self.Archive)
-        self.delete(task_ID)
-        
-def Fill_date(Dict,start = None,base_line = 0):
-    if start is None:
-        start = str(Last_monday())
-    most_recent = min(Dict.keys(),key = DATE)#lambda L:[DATE(i) for i in L])
-    assert DATE(start) <= DATE(most_recent),'Start date must be no larger than the existing smallest date'
-    date = start 
-    OUT = {}
-    while DATE(date) <= DATE(most_recent):
-        date = str(tmr(date)) #
-        OUT[date] = base_line
-    OUT = {**OUT,**Dict}
-    return OUT
+     
+def Df_to_Gtask(df):
+    "Transform a GPK_todo.todos df into a list of Gtasks"
+    OUT = []
+    for idx in df.index:
+        row = df.loc[idx]
+        Gtask = gpk_task(name = row['TaskName'], ID = row['ID'],Reward =row['Reward'] ,
+                Time = row['Time'], Difficulty = row['Difficulty'], Description = "")
+        OUT.append(Gtask)
+    return OUT 
 
 def Fill_date(Dict,start = None,base_line = 0):
     if start is None:
@@ -248,12 +139,13 @@ def df_to_Treeview(master, data:pd.core.frame.DataFrame, col_width = 120,col_min
     return my_tree    
 
 def DATE(String):
-    import datetime
-    STR = String.split("-")
-    Y = int(STR[0])
-    M = int(STR[1])
-    D = int(STR[2])
-    return(datetime.date(Y,M,D))
+
+    if String is not None:
+        STR = String.split("-")
+        Y = int(STR[0])
+        M = int(STR[1])
+        D = int(STR[2])
+        return(datetime.date(Y,M,D))
         
 class DF_Search:
     def __init__(self,df):
@@ -546,13 +438,15 @@ class DF_Analysis(DF_Search):
         plot1.legend()
             
             
-def Fetch_plan_null(Loaded):
-#     Loaded = self.callback(Return = True).todos.Load 
+def Fetch_plan_null(Loaded , Sections =['Priority_Task','Special_Task']):
+    if not isinstance(Sections,list):
+        Sections = [Sections]
+    #Return a Plan from a Null Load file 
     D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
     OUT = {'Inbox':[]}
     for day in D.values():
         OUT[day] = []
-    for sec in ['Priority_Task','Special_Task']:
+    for sec in Sections:
         for Objective in eval(f'Loaded.WeekObjective.{sec}'):
             O_ID = Objective.Objective.split(":")[0]
             for KR in Objective.KeyResults:
@@ -564,6 +458,114 @@ def Fetch_plan_null(Loaded):
                                 Description = "")
                 OUT['Inbox'].append(Gtask)
     return OUT
+
+class Gpk_ToDoList:
+    def __init__(self):
+        self.todos = pd.DataFrame({"ID":[ ],"TaskName":[ ],"Reward":[ ],
+                            "Time":[ ],"Difficulty":[ ],
+                            "ObjectID":[ ],"KeyResult ID":[ ],"Task Category":[ ]})
+        self.Archive = pd.DataFrame()
+        self.task_descriptions = {}
+    
+    def reset_des(self):
+        self.task_descriptions = {}
+        print("Task Descriptions Rest")
+                
+    def add(self,task_name,task_ID,task_time,task_diff,task_des,ddl = None, RETURN = False):
+        "task_ID: S_G4-3_K1" #Special/Recurrent/Priority_Goal#_KeyResult#
+        try:
+            if task_ID  in list(self.todos['ID']):
+                print("ERROR,ID Already Exsit")
+                return 
+        except KeyError: #When it's empty 
+            print("Empty")
+        reward = self.Reward(task_time,task_diff) #calculate reward based on tasktime and difficulty
+        Category = task_ID.split("_")[1].split("-")[0][1] #Fetch Task Category Based on Task_ID format 
+        KR_ID = task_ID.split("_")[2] 
+        O_ID = task_ID.split("_")[1]
+        task = pd.DataFrame({"ID":[task_ID],"TaskName":[task_name],"Reward":[reward],
+                            "Time":[task_time],"Difficulty":[task_diff],
+                            "ObjectID":[O_ID],"KeyResult ID":[KR_ID],"Task Category":[Category],
+                            "Deadline":[ddl]})
+        try:
+            self.task_descriptions[task_ID] = task_des
+        except:
+            self.reset_des() 
+            #self.task_descriptions[task_ID] = task_des #RESET
+             
+        if RETURN:
+            return
+        else:
+            self.todos = self.todos.append(task, ignore_index=True)
+            
+    def add_gpkTask(self,Gtask):
+        self.add(task_name = Gtask.name,task_ID = Gtask.ID,
+                 task_time = float(Gtask.Time) ,
+                 task_diff = float(Gtask.Difficulty),
+                 task_des = Gtask.Description)
+      
+    
+    def Reward(self,time,difficulty):
+        "Return Rewards Based on Time and Difficulty"
+        time_lower_bound = 0.35
+        time_upper_bound = 5
+        difficulty_upper_bound = 10
+        if time < time_lower_bound:
+            time = time_lower_bound
+        if time > time_upper_bound:
+            time = time_upper_bound
+        if difficulty > difficulty_upper_bound:
+            difficulty = difficulty_upper_bound
+        difficulty = abs(difficulty)
+        reward = 3*(time**0.6*difficulty**0.4) + random.choice([-0.5,0,0.5,1,1.5,2])
+        return(round(reward))
+    
+    def idx_reset(self,df):
+        df = df.reset_index()
+        try:
+            df =  df.drop('level_0',axis = 1)
+        except KeyError:
+            pass
+        try:
+            df =  df.drop(['index'],axis = 1)
+        except KeyError:
+            pass
+        return df
+    
+        
+    def delete(self,task_ID):
+        "Delete A Task"
+        idx = self.todos.loc[self.todos['ID'] == task_ID].index 
+        self.todos = self.todos.drop(idx)
+        self.todos = self.idx_reset(self.todos)
+        try:
+            self.task_descriptions.pop(task_ID)
+        except Exception as e:
+            print(f'ERROR!ID {task_ID} does not exist.')
+            print(f"Exception Raised:{e}")
+        
+        
+    def edit(self,task_name,task_ID,task_time,task_diff,task_des,ddl):
+        "Edit An Existing Task"
+        self.delete(task_ID)
+        self.add(task_name,task_ID,task_time,task_diff,task_des,ddl)
+        
+    def complete(self,task_ID):
+        time_stamp = str(datetime.datetime.now())
+        date_today = str(datetime.datetime.now().date())    
+        week_day_today = str(datetime.datetime.now().weekday())
+        og_task = copy.deepcopy(self.todos.loc[self.todos['ID'] == task_ID])
+        og_task.insert(8,"date_done",[date_today])
+        og_task.insert(9,"week_day",[week_day_today])
+        og_task.insert(10,"time_stamp",[time_stamp])
+        try:
+            og_task.insert(11,"description",[self.task_descriptions[task_ID]])
+        except:
+            pass
+        self.Archive = self.Archive.append(og_task)
+        self.Archive = self.idx_reset(self.Archive)
+        self.delete(task_ID)
+   
 
 if __name__ == '__main__':
     dates = ['2021-07-04', '2021-07-05', '2021-07-06', '2021-07-09', '2021-07-11']

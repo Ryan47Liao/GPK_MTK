@@ -15,7 +15,7 @@ from gpkTask import gpk_task
 from GPK_MTK import GPK_MTK
 from mtk_planning import GPK_MTK_Plan
 # In[10]:
-
+from gpk_utilities import *
 
 class PROFILE:
     def __init__(self, username, password, bio = None):
@@ -107,10 +107,12 @@ class Gpk_ToDoList:
             self.todos = self.todos.append(task, ignore_index=True)
             
     def add_gpkTask(self,Gtask):
+        #Since Gtask has no Deadline,Add it as tmr 
+        ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
         self.add(task_name = Gtask.name,task_ID = Gtask.ID,
                  task_time = float(Gtask.Time) ,
                  task_diff = float(Gtask.Difficulty),
-                 task_des = Gtask.Description)
+                 task_des = Gtask.Description , ddl = ddl)
       
     
     def Reward(self,time,difficulty):
@@ -206,4 +208,5 @@ class OKR_Plan:
 class Inventory:
     def __inti__(self):
         pass
+    
 
