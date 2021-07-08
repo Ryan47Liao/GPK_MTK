@@ -17,6 +17,7 @@ from gpk_archive_frame import gpk_archive
 from gpk_stat_frame import gpk_analysis
 from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning
 from gpk_dashboard_frame import gpk_dash
+from gpk_recurrent import gpk_Recur_frame
 
 class gpk_Shell:
     def __init__(self):
@@ -289,9 +290,15 @@ class gpk_Main():
             
     
 
-    def call_frame(self, frame_name):
-        self.hide_all_frames(frame_name)
-        getattr(self,frame_name).pack(fill = tk.BOTH,expand = 1)
+    def call_frame(self, frame_name , cnf = {'fill' : tk.BOTH , 'expand' : 1 }):
+        if cnf == {'fill' : tk.BOTH , 'expand' : 1 }: #Default: Refresh Frame 
+            self.hide_all_frames(frame_name)
+            getattr(self,frame_name).pack(**cnf)
+        else:
+            new_window = tk.Tk()
+            frame = eval(f'gpk_Recur_frame(new_window,self.geometry,callback = self.Profile_call_back)')
+            frame.pack(**cnf)
+            new_window.mainloop()
     
     def hide_all_frames(self, exception):
         "Clears the Page for other Frames"
@@ -308,6 +315,19 @@ class gpk_Main():
         # Build a menu and add it to the root frame.
         menu_bar = tk.Menu(self.gpk_main_rt)
         self.gpk_main_rt['menu'] = menu_bar
+        #_________________Menu->DashBoard________________________
+        self.DashBoard = tk.Menu(menu_bar,postcommand = lambda: self.call_frame('gpk_dash_board'))
+        menu_bar.add_cascade(menu=self.DashBoard, label='HOME')
+
+        #_________________Menu->Recursive Task Setting________________
+        # Recur = tk.Menu(menu_bar) 
+        # menu_bar.add_cascade(menu=Recur, label='Task Setting')
+        # Recur.add_command(label='Recurrent Tasks Setting', command = lambda: 
+        #                   self.call_frame('gpk_Recur_frame'))
+    
+        self.gpk_Recur_frame = gpk_Recur_frame(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.FRAMES.append("gpk_Recur_frame")
+        
         #_________________Menu->Today________________________
         menu_today = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_today, label='Today')
@@ -319,8 +339,8 @@ class gpk_Main():
         #_________________Menu->WEEK________________________
         menu_Week = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Week, label='Week')
-        menu_Week.add_command(label='Week Progress', command = lambda: self.call_frame('gpk_weekView'))
         
+        menu_Week.add_command(label='Week Progress', command = lambda: self.call_frame('gpk_weekView'))
         self.gpk_weekView = gpk_weekView(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
         self.FRAMES.append("gpk_weekView")
         
@@ -360,11 +380,8 @@ class gpk_Main():
         self.gpk_mtk_frame = gpk_mtk_frame(self.gpk_main_rt,call_back = self.Profile_call_back)
         self.FRAMES.append("gpk_mtk_frame")
         
-        #_________________Menu->DashBoard________________________
-        DashBoard = tk.Menu(menu_bar)#, postcommand = lambda: self.call_frame('gpk_dash_board'))
-        menu_bar.add_cascade(menu=DashBoard, label='DashBoard')
-        DashBoard.add_command(label='HOME', command = lambda: self.call_frame('gpk_dash_board'))
-        
+
+               
         #_________________Menu->Exit________________________
         Exit = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=Exit, label='Exit')
@@ -376,9 +393,9 @@ class gpk_Main():
         self.gpk_dash_board = gpk_dash(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
         self.gpk_dash_board.pack(fill = tk.BOTH,expand = 1)
         self.FRAMES.append("gpk_dash_board")
+        self.DashBoard.add_command(label='Refresh', command =  self.gpk_dash_board.REFRESH_ALL)
         
-        test_btn = tk.Button(master =self.gpk_dash_board  ,text = 'WELCOME')
-        test_btn.pack()
+        self.hide_all_frames(exception= 'gpk_dash_board')
 
 class gpk_okr(tk.Frame):
     def __init__(self,root):

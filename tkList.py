@@ -63,7 +63,9 @@ class tkLIST(tk.Frame):
         self.selected = tk.StringVar()
         self.selected.set("Select and Submit to update")
         if self.show_sub:
-            self.lab_s = tk.Label(self.view_frame,textvar = self.selected)
+            self.lab_s = tk.Label(self.view_frame,
+                                  textvar = self.selected,
+                                  font = ('times new roman',16))
             self.lab_s.pack()
             
             self.TEXT = tk.Text(self.view_frame,height = 10,
@@ -71,10 +73,6 @@ class tkLIST(tk.Frame):
             self.TEXT.configure(font=("Times New Roman", 14, "bold"))
             self.TEXT.pack()
             
-
-            self.sub_bttn = tk.Button(self.view_frame,text = "Show Detail",
-                                      command = self.retrieve)
-            self.sub_bttn.pack(side= "bottom")
             
             
 if __name__ == '__main__':
