@@ -13,6 +13,8 @@ import sys
 from gpk_Score import *
 from Plan_load import *
      
+D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+
 def Df_to_Gtask(df):
     "Transform a GPK_todo.todos df into a list of Gtasks"
     OUT = []
@@ -42,7 +44,6 @@ def Fill_date(Dict,start = None,base_line = 0):
 def wkday_to_date(wkday):
     "Convert a Wkday of this week into its date"
     DICT = {}
-    D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
     date = str(Last_monday())
     while str(date) != str(Next_Sunday()):
         DICT[str(date)] = D[int(DATE(date).weekday()+1)]
@@ -267,7 +268,7 @@ class DF_Analysis(DF_Search):
             Last_n_df = self.Last_n_day(n,df,Group)
         else:
             Last_n_df = df 
-        print(Last_n_df)
+        #print(Last_n_df)
         temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
         res = pd.DataFrame(temp).sort_values(by = Group, key = key,ascending = True)
         #Finally:
@@ -295,10 +296,10 @@ class DF_Analysis(DF_Search):
             Last_n_df = self.Last_n_day(n,df,Group)
         else:
             Last_n_df = df 
-        print(Last_n_df)
+        #print(Last_n_df)
         temp = eval(f"Last_n_df.groupby(Group).{sec}.agg(sum)")
         res = pd.DataFrame(temp).sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = True)
-        print(res)
+        #print(res)
         #Finally:
         dates = [i for i in res.index]
         freq = res[sec]
@@ -377,7 +378,8 @@ class DF_Analysis(DF_Search):
         eval(f'plot{plot_id}.set_ylabel(sec)')
     
     def Plot_Sec(self, n = None , time_frame = 'Day',sec = 'Time', 
-                 shreshold = 0.2, title = None,df = None,dim = 111,Group = 'date_done'):
+                 shreshold = 0.2, title = None,df = None,
+                 dim = 111,Group = 'date_done', plt_method = None,kargs = {}):
         """
         -n: Number of time_frame to be plotted 
         -time_frame: type of time_frame, Day,Week,Month
@@ -404,11 +406,18 @@ class DF_Analysis(DF_Search):
         X = {1:0,2:0,3:0,4:0}
         for goal_sec in temp_Dict:
             X[int(goal_sec)] = temp_Dict[goal_sec]/sum(temp_Dict.values())
-        print(X)
+        #print(X)
         explode = [True if x == min(X.values()) and float(x) < shreshold else False for x in X.values()]
         #Labs = [Lab + '\n' + str(Percentage)+"%" for Lab,Percentage in zip(Labs,X)]
-        eval(f'plot{plot_id}.pie(X.values(), explode = explode,labels = Labs, autopct = lambda value: str(round(value,2))+"%")') 
-        
+        if plt_method is None:
+            eval(f'plot{plot_id}.pie(X.values(), explode = explode,labels = Labs, autopct = lambda value: str(round(value,2))+"%")') 
+        else:
+            X_new = list(X.values())
+            kargs_new = {}
+            for k,v in kargs.items():
+                kargs_new[k] = eval(v)
+            plt_method(**kargs_new)
+            
     def get_fig(self):
         return self.fig 
     
@@ -421,9 +430,9 @@ class DF_Analysis(DF_Search):
             df = self.df
         if Scores is None:
             Scores = Get_Scores(df,Loaded) #A dictionary of datetime and scores
-        print(Scores)
+        #print(Scores)
         Scores = Fill_date(Scores)
-        print(Scores)
+        #print(Scores)
         LST = list(Scores.values())
         plot1 = self.fig.add_subplot(dim,title = title)
         #

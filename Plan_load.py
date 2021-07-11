@@ -442,7 +442,7 @@ def progress(value,  length=40, title = " ", vmin=0.0, vmax=1.0):
     i = int(round(base*math.floor(float(y)/base),prec)/base)
     bar = "█"*x + blocks[i]
     n = length-len(bar)
-    bar = lsep + bar + " "*n + rsep
+    bar = lsep + bar + "_"*n + rsep
 
     sys.stdout.write("\r" + title + bar + " %.1f%%" % (value*100))
     sys.stdout.flush()

@@ -159,7 +159,8 @@ def now(L,n=7):
 def constant_line(n):
     return [n,n,n,n,n,n,n]
 
-def score_plt(Lst,Save=False,grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'b'),"A":(85,'g'),"S":(95,'m')}):
+def score_plt(Lst,Save=False,path = None,
+              grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'b'),"A":(85,'g'),"S":(95,'m')}):
     from matplotlib.pyplot import figure
     figure(figsize=(8,8))
     Trend = trend(list(Lst))
@@ -176,14 +177,11 @@ def score_plt(Lst,Save=False,grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'
     plt.legend()
     plt.title("Score Projection")
     if Save:
-        plt.savefig("fig_score.png")
+        plt.savefig(path)
     else:
         plt.show()
     
-
-def S_P(data,date,Save=False):
-    "Plot Score Projection for the week"
-    score_plt(Score_trend(data,date),Score_trend(data,date),Save)
+    
     
 ####NEW####2021/7/5
 def yesterday(date_str):
@@ -215,8 +213,7 @@ def Get_Scores(df,Loaded,today = None, RETURN_null = False, Auto_fill = False):
     #1.Find the date of the LAST Monday, could be today
     start = str(Last_monday(today))
     end = str(Next_Sunday(today))
-    print(start)
-    print(end)
+    print(f"calling:Get_Score,from {start} to {end}")
     #2.Isolate the data
     df_new = Analysis.SEARCH('date_done',predict = lambda dt: DATE(dt) >= DATE(start) and  DATE(dt) <= DATE(end))
     #3.Sort the data by date_done:
@@ -259,4 +256,7 @@ def Get_Scores(df,Loaded,today = None, RETURN_null = False, Auto_fill = False):
         OUT[day] = score_okr(WO_null)
     if RETURN_null:
         return WO_null
+    
+    if OUT == {}:
+        OUT = {start : 0 } #In the case when it's new week
     return OUT

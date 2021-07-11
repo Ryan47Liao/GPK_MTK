@@ -25,6 +25,7 @@ class gpk_Shell:
         self.shell_rt = tk.Tk()
         self.shell_rt.title("GPK_LOGIN")
         self.shell_rt.geometry('1100x850')
+        self.shell_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.cwd = os.getcwd()
         self.ACC = None
         self.PW = None
@@ -257,6 +258,7 @@ class gpk_Main():
         self.Profile = Profile
         self.file_path = file_path
         self.gpk_main_rt = tk.Tk()
+        self.gpk_main_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.gpk_main_rt.option_add('*tearOff', False)
         self.gpk_main_rt.title("GPK_Main")
         base = 120
@@ -316,8 +318,9 @@ class gpk_Main():
         menu_bar = tk.Menu(self.gpk_main_rt)
         self.gpk_main_rt['menu'] = menu_bar
         #_________________Menu->DashBoard________________________
-        self.DashBoard = tk.Menu(menu_bar,postcommand = lambda: self.call_frame('gpk_dash_board'))
+        self.DashBoard = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=self.DashBoard, label='HOME')
+        
 
         #_________________Menu->Recursive Task Setting________________
         # Recur = tk.Menu(menu_bar) 
@@ -341,11 +344,12 @@ class gpk_Main():
         menu_bar.add_cascade(menu=menu_Week, label='Week')
         
         menu_Week.add_command(label='Week Progress', command = lambda: self.call_frame('gpk_weekView'))
-        self.gpk_weekView = gpk_weekView(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.gpk_weekView = gpk_weekView(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back,Main = self)
         self.FRAMES.append("gpk_weekView")
         
         menu_Week.add_command(label='Week Planning', command = lambda: self.call_frame('gpk_weekPlanning'))
-        self.gpk_weekPlanning = gpk_weekPlanning(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
+        self.gpk_weekPlanning = gpk_weekPlanning(self.gpk_main_rt,self.geometry,
+                                                 callback = self.Profile_call_back,main = self)
         self.FRAMES.append("gpk_weekPlanning")
         #_________________Menu->STORE________________________
         menu_Store = tk.Menu(menu_bar)
@@ -395,8 +399,9 @@ class gpk_Main():
         self.FRAMES.append("gpk_dash_board")
         self.DashBoard.add_command(label='Refresh', command =  self.gpk_dash_board.REFRESH_ALL)
         
+        self.DashBoard.config(postcommand = lambda: self.call_frame('gpk_dash_board'))
         self.hide_all_frames(exception= 'gpk_dash_board')
-
+        
 class gpk_okr(tk.Frame):
     def __init__(self,root):
         super().__init__(bg = 'black')

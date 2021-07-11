@@ -10,14 +10,16 @@ from time import sleep
 from gpkTask import gpk_task
 from tkList import tkLIST 
 from gpk_recurrent import gpk_Recur_frame
+from gpk_Report import gpk_Report
 
 class gpk_weekView(tk.Frame):
-    def __init__(self,root,geometry,callback  = None):
+    def __init__(self,root,geometry,callback  = None,Main = None):
         super().__init__()
         self.root = root
         self.callback = callback
         self.height = geometry['height']
         self.width = geometry['width']
+        self.MAIN = Main
         PROFILE = self.callback(Return = True)
         try:
             df = OKRLOG_to_df(PROFILE.todos.Load.WeekObjective) 
@@ -60,6 +62,12 @@ class gpk_weekView(tk.Frame):
         self.file_path = filename.name
         PROFILE = self.callback(Return = True)
         PROFILE.todos.get_Load(self.file_path)
+        
+#***:Update the Load Progress with current Archive 
+        PROFILE.todos.Load = Get_Scores(df = PROFILE.todos.Archive,
+                                        Loaded = PROFILE.todos.Load,
+                                        RETURN_null = True)
+        
         self.callback(PROFILE,Update = True)
         #Re_init the DF_Analysis
         try:    
@@ -68,7 +76,9 @@ class gpk_weekView(tk.Frame):
             df = pd.DataFrame()
         self.Analysis = DF_Analysis(df,(3,6))
         
-        self.Show_View()
+        self.Show_View() 
+        #Re_init the Recur setting frame
+        self.MAIN.gpk_Recur_frame.Ref()
         
     def Show_View(self):
         PROFILE = self.callback(Return = True)
@@ -81,6 +91,15 @@ class gpk_weekView(tk.Frame):
     def Text_refresh(self):
         self.OKRLOG_Text.delete("1.0","end")
         self.OKRLOG_Text.insert("1.0", self.OKRVIEW.get())
+        
+    def Report_Gen(self):
+        title = tk.simpledialog.askstring(title = 'Generate Week Report',
+                                                prompt = 'Please Specify Season and Date.E.g: Season3_Week2')
+        if title is not None:
+            Report = gpk_Report(self.callback(Return = True),"OKR_"+title+"Report")
+            Report.OKR_report(title)
+            tk.filedialog.askopenfile(mode="r", initialdir = Report.path)
+
             
         
     def _draw(self):
@@ -131,7 +150,7 @@ class gpk_weekView(tk.Frame):
         
         self.Import_btn = tk.Button(self.InterFrame,text = 'Import OKR Week Agenda',
                                     command = self.Load_Plan)
-        self.Report_btn = tk.Button(self.InterFrame,text = 'Export Report')
+        self.Report_btn = tk.Button(self.InterFrame,text = 'Export Report',command = self.Report_Gen)
 
         
         self.RT_setting_btn.pack(padx = 5, pady = 5)#.gird(row = 4, column = 0,padx = 5, pady = 5)
@@ -150,9 +169,10 @@ class gpk_weekView(tk.Frame):
         
         
 class gpk_weekPlanning(tk.Frame):
-    def __init__(self,root,geometry,callback  = None):
+    def __init__(self,root,geometry,callback  = None,main = None):
         super().__init__()
         self.callback = callback
+        self.MAIN = main 
         self.height = geometry['height']
         self.width = geometry['width']
         self.root = root
@@ -294,6 +314,9 @@ class gpk_weekPlanning(tk.Frame):
         self.file_path = filename.name
         Profile = self.callback(Return = True)
         Profile.todos.get_Load(self.file_path)
+        Profile.todos.Load = Get_Scores(df = Profile.todos.Archive,
+                                Loaded = Profile.todos.Load,
+                                RETURN_null = True) #Update the progress
         self.callback(Profile,Update = True) 
         
     def IMPORT(self):
@@ -310,6 +333,8 @@ class gpk_weekPlanning(tk.Frame):
         self.Get_Option()
         self.LB_Ref()
         self.CF_update(master = self.RightFrame ) 
+        #2. Update Recurs 
+        self.MAIN.gpk_Recur_frame.Ref()
     
     def move_to(self,ID,Section):
         Profile = self.callback(Return = True) 

@@ -5,6 +5,8 @@ from Plan_load import *
 from random import randint
 import tkinter as tk
 from tkinter import ttk
+from PIL import ImageTk,Image
+import os
 
 class gpk_Recurrent(Gpk_ToDoList):
     "A Class That Manages Recurrent Tasks"
@@ -73,7 +75,11 @@ class gpk_Recur_frame(tk.Frame):
         # Loaded = Load('OKRLOG_S3_W1.docx')
         # Loaded.get_week_objective() #Fetch Weekly Plans 
         ### TEST
-        self.Recur_Fetch() #Loaded
+        try:
+            self.Recur_RESET() #Loaded
+        except:
+            print("[gpk_Recur_frame.__init__] Error: Fail to load recursive tasks")
+            pass 
         #     #
         # Plan = Fetch_plan_null(Loaded,'Recursive_Task')
         # for Gtask in Plan['Inbox']:
@@ -82,20 +88,41 @@ class gpk_Recur_frame(tk.Frame):
         #Finally 
         self._draw()
         
-    def Recur_Fetch(self, Loaded = None):
-        if Loaded is None:
-            Profile = self.callback(Return = True)
-            Loaded = Profile.todos.Load
-        for Gtask in Fetch_plan_null(Loaded,'Recursive_Task')['Inbox']:
-            self.RECUR.add_gpkTask(Gtask)
+    def Recur_RESET(self):
+        Profile = self.callback(Return = True)
+        Profile.gpk_Recur = gpk_Recurrent() 
+        self.RECUR = Profile.gpk_Recur
+        self.Recur_Fetch(Profile.todos.Load)
+        #Finally 
+        self.callback(Profile,Update = True)
         
-    def Refresh(self,event):
+    def Recur_Fetch(self, Loaded = None):
+        try:
+            if Loaded is None:
+                Profile = self.callback(Return = True)
+                try: 
+                    Loaded = Profile.todos.Load
+                except AttributeError:
+                    Loaded = None
+            for Gtask in Fetch_plan_null(Loaded,'Recursive_Task')['Inbox']:
+                self.RECUR.add_gpkTask(Gtask)
+        except:
+            print("Fail to Fetch Recurrent Task")
+        
+    def Refresh_txt(self,event):#Refresh texts 
         ID = self.CB.get()
         days = self.RECUR.todos[
             self.RECUR.todos['ID'] == ID]['Recur_At'] 
         self.text_update()
         self.ckbox_update(list(days)[0])
-        
+                
+    def Ref(self):#Refresh Com Box
+        self.Recur_RESET()
+        self.Recur_Fetch()
+        Option = list(self.RECUR.todos.ID)
+        print(f"Options refeshed with: \n{Option}")
+        self.CB.config(values = Option)
+    
     def text_update(self):
         ID = self.CB.get()
         df = self.RECUR.todos[self.RECUR.todos['ID'] == ID]
@@ -138,7 +165,7 @@ class gpk_Recur_frame(tk.Frame):
         ## Com Box
         Option = list(self.RECUR.todos.ID)
         self.CB = ttk.Combobox(self.LeftFrame, values = Option)
-        self.CB.bind("<<ComboboxSelected>>", self.Refresh)
+        self.CB.bind("<<ComboboxSelected>>", self.Refresh_txt)
         self.CB.grid(row = 0, column = 1)
         ## Task Info Text 
         self.Task_Info = tk.Text(self.LeftFrame, height =30, width = 50, 
@@ -150,18 +177,27 @@ class gpk_Recur_frame(tk.Frame):
         self.RightFrame.pack(side=tk.LEFT,fill = 'both')
         ## Days Check_Boxes 
         spacer = tk.Label(self.RightFrame,text = "")
-        spacer.pack(pady = 20)
+        spacer.grid(row = 0, column = 0,pady = 20)
         self.ND = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
         self.DN = {v:k for k,v in self.ND.items()}
+        
+        ## Ref
+        row = 1
+        self.img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
+        self.Ref_btn = tk.Button(self.RightFrame,image = self.img, command = self.Ref)
+        self.Ref_btn.grid(row = row, column = 0,padx = 10,pady = 20)
+        
         ## Save 
         for day in self.ND:
+            row += 1 
             exec(f"self.select_{day} = tk.IntVar()")
             exec(f"self.ckbox_{day} = tk.Checkbutton(master = self.RightFrame, text=self.ND[day], variable = self.select_{day})")
-            eval(f"self.ckbox_{day}.pack(padx = 10,pady = 10)")
+            eval(f"self.ckbox_{day}.grid(row = {row}, column = 0,padx = 10,pady = 10)")
         self.ckbox_update()
         
         self.save_btn = tk.Button(self.RightFrame,text = 'Save', command = self.SAVE, font = ('times new roman',14))
-        self.save_btn.pack(padx = 10,pady = 20)
+        self.save_btn.grid(row = row +1 , column = 0 ,padx = 10,pady = 20)
+
         
 def SET_RT():
     root = tk.Tk()
