@@ -4,6 +4,7 @@ from Plan_load import Load
 from gpkTask import gpk_task
 from time import sleep
 import copy
+from tkinter import messagebox
 
 from gpk_utilities import *
 
@@ -31,9 +32,16 @@ class GPK_MTK_Plan(GPK_MTK):
             self.Post_All() #Post all Scheduled Task into the meistertask Planner 
               
     def get_Load(self,path):
-        self.Load = Load(path)
-        self.Load.get_week_objective()
-        self.Load_backup = copy.deepcopy(self.Load)
+        Loaded = Load_Notion(file_path = path)
+        Loaded.get_week_objective()
+        if Plan_Legit(Loaded):
+            self.Load = Loaded
+            self.Load_backup = copy.deepcopy(Loaded)
+        else:
+            Warning =  print_collector(lambda : Plan_Legit(Loaded))
+            messagebox.showwarning('Import Error',Warning)
+            
+
         
     def Planner_SetUp(self):
         self.RESET(name = 'OKR_Planner',

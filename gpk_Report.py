@@ -167,20 +167,18 @@ class gpk_Report():
     #     doc.add_page_break()
     
     # Part 5:OKR Weekly Evaluation
-        Score_PLOT = plt.figure(figsize=(14,10))
-        Scores = Get_Scores(self.Profile.todos.Archive,
-                          self.Profile.todos.Load)
-        Scores = Fill_date(Scores)
-        LST = list(Scores.values())
-        score_plt(LST,Save = True,path = self.path + "/fig_score.png")
-         
+        Analysis = DF_Analysis(self.Profile.todos.Archive,(14,10))
+        Analysis.Rest_fig((14,10))
+        Analysis.Plot_Score(self.Profile.todos.Load_backup)
+        fig = Analysis.get_fig()
+        fig.savefig(self.path + "/fig_score.png")
         
         doc.add_heading("Part5:OKR Weekly Evaluation", 1)
         score = score_okr(self.Profile.todos.Load) 
         grade = grade_okr(score)
         summary = "Total Score:{}\nLetter Grade:{}".format(score,grade)
         paraSummary = doc.add_paragraph(summary,style='Intense Quote')
-        doc.add_picture(self.path+'/fig_score.png', width=docx.shared.Cm(10),height=docx.shared.Cm(10))
+        doc.add_picture(self.path+'/fig_score.png', width=docx.shared.Cm(14),height=docx.shared.Cm(10))
         
     #Finally:
         not_saved = True

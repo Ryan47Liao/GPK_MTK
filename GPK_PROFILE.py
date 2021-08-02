@@ -107,8 +107,11 @@ class Gpk_ToDoList:
             self.todos = self.todos.append(task, ignore_index=True)
             
     def add_gpkTask(self,Gtask):
-        #Since Gtask has no Deadline,Add it as tmr 
-        ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
+        try:
+            ddl = str(DATE(Gtask.Deadline))
+        except:
+            #If Gtask has no Deadline, Add it as tmr 
+            ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
         self.add(task_name = Gtask.name,task_ID = Gtask.ID,
                  task_time = float(Gtask.Time) ,
                  task_diff = float(Gtask.Difficulty),
@@ -160,7 +163,7 @@ class Gpk_ToDoList:
         self.delete(task_ID)
         self.add(task_name,task_ID,task_time,task_diff,task_des,ddl)
         
-    def complete(self,task_ID):
+    def complete(self,task_ID,Quadrant:int = 1):
         time_stamp = str(datetime.datetime.now())
         date_today = str(datetime.datetime.now().date())    
         week_day_today = str(datetime.datetime.now().weekday())
@@ -172,6 +175,13 @@ class Gpk_ToDoList:
             og_task.insert(11,"description",[self.task_descriptions[task_ID]])
         except:
             pass
+#***0.04:
+    ##Introducing Q4 Analysis 
+        #1.If In Current Load, Add as Q2 
+        og_task.insert(12,"Quadrant",Quadrant)
+        #2.If NOT In Current Load, Add as Q1 
+        #3. Q3/4 are not recorded here 
+##END###
         self.Archive = self.Archive.append(og_task)
         self.Archive = self.idx_reset(self.Archive)
         self.delete(task_ID)
@@ -196,7 +206,11 @@ class GPk_Mtk_todoList(Gpk_ToDoList,GPK_MTK_Plan):
             
     
     #From MTK -> GPK        
-
+class GPk_Notion_todoList(Gpk_ToDoList,GPK_MTK_Plan):
+    def __init__(self,token = None,project_id=None):
+        Gpk_ToDoList.__init__(self)
+        GPK_MTK_Plan.__init__(self,api_token = token,project_id=project_id)
+        
 class OKR_Plan:
     def __inti__(self):
         pass

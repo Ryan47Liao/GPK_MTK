@@ -16,7 +16,9 @@ class gpk_task(task):
         -Time
         -Difficulty
         -Description
+        -Deadline 
         """
+        self.Deadline = None #Default no Deadline
         self.name = name 
         self.note = notes
         self.SECTIONs = sections
@@ -34,6 +36,7 @@ class gpk_task(task):
                 self.Time = kargs['Time']
                 self.Difficulty = kargs['Difficulty']
                 self.Description= kargs['Description']
+                self.Deadline = kargs['Deadline']
             except Exception as e:
                 print(e)
         self.ID_intepret()
@@ -56,13 +59,13 @@ class gpk_task(task):
         return f"""
 ID:{self.ID}
 
-[Reward]
+`Reward`
 {str(float_str(self.Reward,"$"))}
-[Time]
+`Time`
 {str(float_str(self.Time))}
-[Difficulty]
+`Difficulty`
 {str(float_str(self.Difficulty))}
-[Description]
+`Description`
 {self.Description}
                """
     

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+#Admin Version which requires only Admin PW, NOT accessible from others
 import tkinter as tk
 from tkinter import ttk
 from PIL import ImageTk,Image
@@ -19,12 +20,11 @@ from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning
 from gpk_dashboard_frame import gpk_dash
 from gpk_recurrent import gpk_Recur_frame
 from gpk_Notion_frame import gpk_notion_frame
-from gpk_Misc_frame import gpk_misc #2021/7/24 
-from gpk_D_Reflection_frame import D_Reflection_Frame #2021/7/25
 
 class gpk_Shell:
     def __init__(self):
-        self.version = '0.053'
+        self.ADMIN_CODE = 13705165727
+        self.version = 'ADMIN -0.033'
         self.shell_rt = tk.Tk()
         self.shell_rt.title("GPK_LOGIN")
         self.shell_rt.geometry('1100x850')
@@ -63,17 +63,13 @@ class gpk_Shell:
     
     def authenticate(self)->bool:
         "Authenticates the user"
-        if self.Profile.username != self.ACC:
-            getattr(messagebox,'showwarning')("Access Denied","You must Load the CORRECT save first") 
+        if self.Profile is None:
+            getattr(messagebox,'showwarning')("Access Denied","You must Load the saved file first.") 
             self.open_profile()
+            return False
         else:
-            if self.Profile is None:
-                getattr(messagebox,'showwarning')("Access Denied","You must Load the saved file first.") 
-                self.open_profile()
-                return False
-            else:
-                return self.Profile.Verified(self.PW) 
-            
+            return self.Profile.Verified(self.PW) 
+        
         
     def gpk_login(self):
         self.ACC = self.acc_entry.get()
@@ -82,7 +78,7 @@ class gpk_Shell:
         except:
             getattr(messagebox,'showwarning')("ERROR","PING must be Digits only!") 
         "If LogIn Successful,open the Main app and destroy the login."
-        if self.authenticate():
+        if self.PW == self.ADMIN_CODE:#self.authenticate():
             #If remember me is toggled 
             if self.remember.get():
                 self.cache.set_info(self.ACC,self.PW)
@@ -324,10 +320,6 @@ class gpk_Main():
         self.gpk_dash_board.REFRESH_ALL()
         self.call_frame('gpk_dash_board')
         
-    def R_call_view(self,num):
-        self.D_reflect.Call_view(num) 
-        self.call_frame('D_reflect')
-        
     def _draw(self):
         #++++++++++++++++++++++++++ＭＥＮＵ++++++++++++++++++++++++++++++++++++++#
         # Build a menu and add it to the root frame.
@@ -342,34 +334,12 @@ class gpk_Main():
         #_________________Menu->Today________________________
         menu_today = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_today, label='Today')
-        menu_today.add_command(label='OKR_Todo', command = lambda: self.call_frame('gpk_todo'))
+        menu_today.add_command(label='To_Do_List', command = lambda: self.call_frame('gpk_todo'))
 
         self.gpk_todo = gpk_to_do(self.gpk_main_rt,self.geometry,
                                   callback = self.Profile_call_back,MAIN = self)
         self.FRAMES.append("gpk_todo")
-        #gpk_misc
-        menu_today.add_command(label='MISC', command = lambda: self.call_frame('gpk_misc'))
-
-        self.gpk_misc = gpk_misc(self.gpk_main_rt,self.geometry,
-                                  callback = self.Profile_call_back,MAIN = self)
-        self.FRAMES.append("gpk_misc")
         
-        #gpk_reflection
-        menu_D_REF = tk.Menu(menu_today)
-        menu_today.add_cascade(menu=menu_D_REF, label='Reflection')
-        self.D_reflect = D_Reflection_Frame(self.gpk_main_rt,self.geometry,
-                                  callback = self.Profile_call_back,Main = self)
-        
-        self.FRAMES.append("D_reflect")
-        #
-        menu_D_REF.add_command(label='How did I spent my time today? ', 
-                               command = lambda: self.R_call_view(1))
-        menu_D_REF.add_command(label='How was my performance? ', command = lambda: self.R_call_view(2))
-        menu_D_REF.add_command(label='How did I contribute to my Goals? ', command = lambda: self.R_call_view(3))
-        menu_D_REF.add_command(label='Efficiency adjustment ', command = lambda: self.R_call_view(4))
-        menu_D_REF.add_command(label='Orientation adjustment ', command = lambda: self.R_call_view(5))
-
-
         #_________________Menu->WEEK________________________
         menu_Week = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Week, label='Week')
@@ -451,12 +421,8 @@ class gpk_okr(tk.Frame):
         self._draw()
         
     def _draw(self):
-        #Label:
-        self.img = Image.open(os.getcwd() + '/Pictures/UnderDev.jpg')
-        # self.Notion_img = self.Notion_img.resize((1000,500), Image.ANTIALIAS)
-        self.img = ImageTk.PhotoImage(self.img)
-        self.Lab = tk.Label(self,image = self.img)
-        self.Lab.pack()
+        self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_week')
+        self.to_dos.pack()
 
 class gpk_store(tk.Frame):
     def __init__(self,root):
@@ -470,12 +436,6 @@ class gpk_store(tk.Frame):
         
         
     def _draw(self):
-        #Label:
-        self.img = Image.open(os.getcwd() + '/Pictures/UnderDev.jpg')
-        # self.Notion_img = self.Notion_img.resize((1000,500), Image.ANTIALIAS)
-        self.img = ImageTk.PhotoImage(self.img)
-        self.Lab = tk.Label(self,image = self.img)
-        self.Lab.pack()
         #Button
         self.Tetris_open = tk.Button(master = self, text = 'Tetris',command = self.Tetris_start)
         self.Tetris_open.pack()

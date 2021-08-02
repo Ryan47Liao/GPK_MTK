@@ -47,7 +47,7 @@ class gpk_weekView(tk.Frame):
             pass 
         self.CF_create(master = self.CF)
         #Plotting 
-        self.Analysis.Rest_fig() 
+        self.Analysis.Rest_fig((4,6)) 
         self.Analysis.Plot_Sec(sec = 'weight', dim = 211, title = 'Weight Distribution')
         self.Analysis.Plot_Sec(sec = 'weight', df = df[df['Task_Type'] == self.View.get()],
                                dim = 212 ,  title = f'Weight Dist of {self.View.get()}')
@@ -57,18 +57,15 @@ class gpk_weekView(tk.Frame):
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side = tk.TOP, anchor = 'n')
         
-    def Load_Plan(self):
-        filename = tk.filedialog.askopenfile(filetypes=[('OKRLOG', '*.docx')])                                 
-        self.file_path = filename.name
+    def REFRESH(self):
+        #Refresh Everything Based on Current Profile
         PROFILE = self.callback(Return = True)
-        PROFILE.todos.get_Load(self.file_path)
-        
 #***:Update the Load Progress with current Archive 
-        PROFILE.todos.Load = Get_Scores(df = PROFILE.todos.Archive,
+        PROFILE.todos.Load,_ = Get_Scores(df = PROFILE.todos.Archive,
                                         Loaded = PROFILE.todos.Load,
                                         RETURN_null = True)
-        
         self.callback(PROFILE,Update = True)
+        
         #Re_init the DF_Analysis
         try:    
             df = OKRLOG_to_df(PROFILE.todos.Load.WeekObjective) 
@@ -77,8 +74,27 @@ class gpk_weekView(tk.Frame):
         self.Analysis = DF_Analysis(df,(3,6))
         
         self.Show_View() 
+
+        
+        
+    def Load_Plan(self):
+        filename = tk.filedialog.askopenfile(filetypes=[('OKRLOG', '*.docx')])                                 
+        self.file_path = filename.name
+        PROFILE = self.callback(Return = True)
+        try:
+            token = self.todos.Load.Get_token()
+        except:
+            pass 
+        PROFILE.todos.get_Load(self.file_path)
+        try:
+            PROFILE.todos.Load.set_token(token)
+        except:
+            print("NO TOKEN Accessible")
+        self.callback(PROFILE,Update = True)
+        self.REFRESH()
+        self.MAIN.gpk_weekPlanning.REFRESH()
         #Re_init the Recur setting frame
-        self.MAIN.gpk_Recur_frame.Ref()
+        self.MAIN.gpk_Recur_frame.Ref(True,True)
         
     def Show_View(self):
         PROFILE = self.callback(Return = True)
@@ -205,7 +221,7 @@ class gpk_weekPlanning(tk.Frame):
         self.PlanView.retrieve() #Update the selected 
         ID = self.PlanView.selected.get().split(":")[1].strip(" ")
         Gtask = self.Locate(PROFILE.todos.Load,ID)
-        Info = str(Gtask) + '\n' + Gtask.progress_show()
+        Info = str(Gtask)
         try:
             self.PlanView.Text_refresh(Info)
         except:
@@ -313,18 +329,19 @@ class gpk_weekPlanning(tk.Frame):
         filename = tk.filedialog.askopenfile(filetypes=[('OKRLOG', '*.docx')])                                 
         self.file_path = filename.name
         Profile = self.callback(Return = True)
+        try:
+            token = self.todos.Load.Get_token()
+        except:
+            token = "Register Notion API and paste the token here"
         Profile.todos.get_Load(self.file_path)
-        Profile.todos.Load = Get_Scores(df = Profile.todos.Archive,
+        Profile.todos.Load.set_token(token)
+        Profile.todos.Load,_ = Get_Scores(df = Profile.todos.Archive,
                                 Loaded = Profile.todos.Load,
                                 RETURN_null = True) #Update the progress
         self.callback(Profile,Update = True) 
         
-    def IMPORT(self):
-        self.PlanView.LB_Clear()
-        self.ReLoad()
-        # self.PlanView.INSERT('Inbox',ids)
-        #Update The Profile 
-        #1. Create New Plan:
+        
+    def REFRESH(self):
         Profile = self.callback(Return = True)
         Loaded = Profile.todos.Load
         Plan = Fetch_plan_null(Loaded)
@@ -333,9 +350,18 @@ class gpk_weekPlanning(tk.Frame):
         self.Get_Option()
         self.LB_Ref()
         self.CF_update(master = self.RightFrame ) 
+        
+    def IMPORT(self):
+        #Update Profile
+        self.ReLoad()
+        # self.PlanView.INSERT('Inbox',ids)
+        #1. Create New Plan:
+        self.REFRESH()
         #2. Update Recurs 
-        self.MAIN.gpk_Recur_frame.Ref()
-    
+        self.MAIN.gpk_Recur_frame.Ref(True,True)
+        #3.Refresh the weekview 
+        self.MAIN.gpk_weekView.REFRESH()
+        
     def move_to(self,ID,Section):
         Profile = self.callback(Return = True) 
         found = False

@@ -22,7 +22,7 @@ class gpk_dash(tk.Frame):
             try:
                eval(f"self.{update}()")
             except:
-                print(f"Fail {update} to Update")
+                print(f"<{update}> Fail to Update")
         
     def Progress_Update(self):
         Profile = self.callback(Return = True)
@@ -43,11 +43,12 @@ class gpk_dash(tk.Frame):
         Analysis = DF_Analysis(df = PROFILE.todos.Archive, figsize = (9,5))
         #
         Analysis.Plot_Sec(n = 30,sec = 'Time',
-                          df = PROFILE.todos.Archive, dim = 221 , title = 'Time Distribution for last 30 days')
-        Analysis.Plot_Date(n=7, sec = 'Time',dim = 222, df = PROFILE.todos.Archive,short = True)
+                          df = PROFILE.todos.Archive, dim = 221 , title = 'Sectional Time Distribution for last 30 days')
+        Analysis.Plot_Date(n=7, sec = 'Time',dim = 222, df = PROFILE.todos.Archive,short = True,
+                           title = 'Time/Reward Distribution for last 7 days')
         Analysis.Plot_Sec(n = 30,sec = 'Reward',
-                          df = PROFILE.todos.Archive, dim = 223 , title = 'Reward Distribution for last 30 days')
-        Analysis.Plot_Date(n=7, sec = 'Reward',dim = 224, df = PROFILE.todos.Archive,short = True)
+                          df = PROFILE.todos.Archive, dim = 223 , title = 'Sectional Reward Distribution for last 30 days')
+        Analysis.Plot_Date(n=7, sec = 'Reward',dim = 224, df = PROFILE.todos.Archive,short = True,title = "")
         #3.Plot 
         fig = Analysis.get_fig()
         canvas = FigureCanvasTkAgg(fig,self.CF_Plots)
@@ -67,7 +68,7 @@ class gpk_dash(tk.Frame):
                               <= (datetime.datetime.now() + datetime.timedelta(days = self.N.get())).date())
         if self.Task_Type_Combo.get() != 'All':
             option = self.Task_Type_Combo.get()[0] 
-            df = Analysis.SEARCH('ID', lambda id: id[0] == option,df = df ) 
+            df = Analysis.SEARCH('ID', lambda id: str(id).split('_')[0] == option,df = df ) 
         
         self.treeview = df_to_Treeview(master=self.TVF, col_width = 100,
                                        data = df)
