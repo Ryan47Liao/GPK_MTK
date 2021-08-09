@@ -24,10 +24,11 @@ from gpk_D_Reflection_frame import D_Reflection_Frame #2021/7/25
 
 class gpk_Shell:
     def __init__(self):
-        self.version = '0.053'
+        self.version = '0.055' #2021/8/6
         self.shell_rt = tk.Tk()
         self.shell_rt.title("GPK_LOGIN")
-        self.shell_rt.geometry('1100x850')
+        self.shell_rt.geometry('1000x780')
+        self.shell_rt.resizable(False, False) 
         self.shell_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.cwd = os.getcwd()
         self.ACC = None
@@ -204,60 +205,64 @@ the task will then be Archived into the Archive',ddl = ddl)
         self.frame_Upper = tk.Frame(master = self.shell_rt, bg = 'black')
         self.frame_Upper.configure(height = 500,width = width)
         self.frame_Upper.pack()
-        self.okr_img = ImageTk.PhotoImage(Image.open(self.cwd + "/Pictures/OKR_Welcome.jpg"))
+        self.okr_img = Image.open(self.cwd + "/Pictures/OKR_Welcome.jpg").resize((1000,500), Image.ANTIALIAS)
+        self.okr_img = ImageTk.PhotoImage(self.okr_img)
         self.top_pic = tk.Label(master = self.frame_Upper , image = self.okr_img, anchor = tk.S)
         self.top_pic.pack(fill = tk.BOTH ) 
         
         #ＬＯＷＥＲ　ＦＲＡＭＥ
         self.frame_Lower = tk.Frame(master = self.shell_rt) #, bg = 'orange')
         self.frame_Lower.configure(height = 200,width = width)
-        self.frame_Lower.pack()
+        self.frame_Lower.pack(pady = 12)
         
+        #Spacere 
+        spacer = tk.Label(self.frame_Lower,text = '')
+        spacer.pack(side = tk.LEFT,padx = 20)
         #___________Acc_entry_______________
-        self.acc_info_entry_frame = tk.Frame(master = self.frame_Lower)# ,bg = 'blue')
+        self.acc_info_entry_frame = tk.Frame(master = self.frame_Lower)#,bg = 'blue')
         self.acc_info_entry_frame.configure(height = 50, width = width)
         self.acc_info_entry_frame.pack(ipady = 0, ipadx = 50, expand = 1)
         
         self.acc_label = tk.Label(master = self.acc_info_entry_frame , text = 'Account:')
         self.acc_entry = tk.Entry(master = self.acc_info_entry_frame, width = 30)
-        self.acc_entry.grid(padx = 20, pady = 10, row = 0, column = 1)
-        self.acc_label.grid(padx = 20, pady = 10, row = 0, column = 0)
+        self.acc_entry.grid(padx = 20, pady = 10, row = 1, column = 2)
+        self.acc_label.grid(padx = 20, pady = 10, row = 1, column = 1)
         ##____________pw_entry_________________
         self.pw_entry = tk.Entry(master = self.acc_info_entry_frame, width = 30 )
-        self.pw_label = tk.Label(master = self.acc_info_entry_frame ,text = 'Pass Word:')
-        self.pw_entry.grid(padx = 20,  pady = (5,10), row = 1, column = 1)
-        self.pw_label.grid(padx = 15, pady = (5,10), row = 1, column = 0)
+        self.pw_label = tk.Label(master = self.acc_info_entry_frame ,text = 'PING:')
+        self.pw_entry.grid(padx = 20,  pady = (5,10), row = 2, column = 2)
+        self.pw_label.grid(padx = 15, pady = (5,10), row = 2, column = 1)
         
         
         #___________login_btn_________________
-        self.login_btn_frame = tk.Frame(master = self.frame_Lower )#, bg = 'red' )
+        self.login_btn_frame = tk.Frame(master = self.frame_Lower)# , bg = 'red' )
         self.login_btn_frame.configure(height = 50,width = 1000)
         self.login_btn_frame.pack( ipady = 0, ipadx = 50, expand = 1)
         
         self.img_login = ImageTk.PhotoImage(Image.open(self.cwd + "/Pictures/new_button_login.ico"))
         
         self.login_btn = tk.Button(master = self.login_btn_frame ,image = self.img_login , command = self.gpk_login)
-        self.login_btn.grid(row = 1, column = 4)
+        self.login_btn.grid(row = 2, column = 5)
         
         #___________Remember_Me_Check_Box___________
         self.remember = tk.IntVar()
         self.remember.set(int(self.cache.Re_status()))
         self.rmchbox = tk.Checkbutton(self.login_btn_frame,variable = self.remember,
                                       onvalue=1, offvalue=0)
-        self.rmchbox.grid(row = 0, column = 3)
+        self.rmchbox.grid(row = 1, column = 4)
         self.rmchbox.configure( command = lambda: self.cache.Set_status(self.remember.get()) )
-        self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 0, column = 4)
+        self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 1, column = 5)
         
         #__________Register__________________
         self.reg_btn_frame = tk.Frame( self.frame_Lower)#, bg = 'green' )
-        self.reg_btn_frame.configure(height = 50,width = 500)
+        self.reg_btn_frame.configure(height = 50,width = 1000)
         self.reg_btn_frame.pack(padx = 100,side = tk.LEFT, ipady = 10, ipadx = 50, expand = 0)
         self.register_btn = tk.Button(master = self.reg_btn_frame ,text = 'Register', command = self.gpk_reg)
         self.register_btn.pack(side = tk.LEFT)#grid( row = 0 , column = 0, columnspan = 1)
+        spacer = tk.Label(self.reg_btn_frame,text = '')
+        spacer.pack(side = tk.LEFT,padx = 290)
         self.version_label = tk.Label(master = self.reg_btn_frame ,
-                                     text = f"""
-                                            \t\t\t\t\t\t Version: {self.version}
-                                            """ ).pack(pady = 10, padx = 100, side = tk.RIGHT)
+                                     text = f"Version: {self.version}").pack(pady = 10, side = tk.RIGHT)
 
 
 class gpk_Main():
@@ -265,12 +270,14 @@ class gpk_Main():
         self.Profile = Profile
         self.file_path = file_path
         self.gpk_main_rt = tk.Tk()
+        
         self.gpk_main_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.gpk_main_rt.option_add('*tearOff', False)
         self.gpk_main_rt.title("GPK_Main")
         base = 120
         width = base*16
         height = base*9
+        self.gpk_main_rt.attributes("-fullscreen", True)  
         self.geometry = {'width':width,'height':height}
         self.gpk_main_rt.geometry('{}x{}'.format(width,height))
         self.FRAMES = []

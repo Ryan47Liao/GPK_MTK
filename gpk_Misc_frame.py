@@ -15,6 +15,8 @@ from gpk_Score import score_okr
 from gpk_recurrent import gpk_Recurrent
 from gpk_todo_frame import gpk_to_do
 
+from tkProgress import TkProgress #2021/8/2
+
 class Profile_Test:
     def __init__(self,path = None, name = None):
         if path is not None:
@@ -207,20 +209,17 @@ class gpk_misc(gpk_to_do):
     def notion_sync(self):
         "Sync with Notion"
         if self.sync_status.get():
-            try:
-                Profile = self.callback(Return = True)
-                share_link = Profile.Notion.MISC_LinkID
-                kargs = {"share_link":share_link,"Profile":Profile ,
-                     "callback": self.callback , 'Misc':True}
-                TkProgress('Syncing With Notion Misc',
-                           'Initiatingn Sync',
-                           'Description',
-                           'Notion_Sync',
-                           kargs)
-                #Refresh 
-                self.todo_tree_update()
-            except:
-                pass  
+            Profile = self.callback(Return = True)
+            share_link = Profile.Notion.MISC_LinkID
+            kargs = {"share_link":share_link,"Profile":Profile ,
+                 "callback": self.callback , 'Misc':True}
+            TkProgress('Syncing With Notion Misc',
+                       'Initiatingn Sync',
+                       'Description',
+                       'Notion_Sync',
+                       kargs)
+            #Refresh 
+            self.todo_tree_update()
         else:
             tk.messagebox.showwarning("Notion Sync Offline",
                                               "Check the Box on the left to enable it")

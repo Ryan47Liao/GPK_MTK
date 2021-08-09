@@ -1,5 +1,6 @@
 import pandas as pd 
 import  tkinter as tk 
+from tkinter import ttk
 import datetime
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
@@ -15,6 +16,7 @@ from GPK_Notion import GPK_Notion
 from Plan_load import *
      
 D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+D_rev = {v:k for k,v in D.items()}
 
 def Fetch_Plain_test(rich_text):
     return Lst_to_str([i['plain_text'] for i in rich_text])
@@ -58,6 +60,52 @@ class TkProgress(tk.Toplevel):
     def UPDATE(self,_f,kargs):
         f = eval(f'self.{_f}')
         f(**kargs)
+        
+    def todo_IMPORT(self,PROFILE,PUSHLIST):
+        self.header.set("Pushing Tasks to Notion...")
+        Succ = [] 
+        Fail = []
+        share_link = PROFILE.Notion.GPKTODO_LinkID
+        if share_link[:5] != 'https':
+            Parent_id = share_link
+        else:
+            Parent_id = None
+        for Gtask in PUSHLIST: #A Great Place to add Progress Bar 
+            for attr in ['Time','Reward','Difficulty']:
+                exec(f"Gtask.{attr} = float(Gtask.{attr})")
+            Description = Gtask.Description if Gtask.Description != "" else None
+            #Check For Deadline:
+            Gtask.Deadline = str(datetime.datetime.today().date()) if Gtask.Deadline is None else Gtask.Deadline
+            res = PROFILE.Notion.Post_Gtask(Gtask,Description = Description, 
+                                        share_link = share_link,
+                                        Parent_id = Parent_id,Misc = False)
+            if res['object'] == 'page':
+                print(f"Task ID {Gtask.ID} pushed to notion")
+                Succ.append((Gtask.ID,Gtask.name))
+            else:
+                Fail.append((Gtask.ID,Gtask.name))
+            ###Update Progress 
+            self.description.set( f"Task ID {Gtask.ID} pushed to notion" + '\n' + str(Gtask))
+            self.count += 1/len(PUSHLIST)
+            self.PG_ref()
+            
+        #Finally,Provide Feedback
+        str_succ = ""
+        str_fail = ""
+        for i in Succ:
+            str_succ += f'{i}\n'
+        for j in Fail:
+            str_fail += f'{j}\n'
+        feedback = f"""
+        -The following tasks were Pushed to Notion:
+            {str_succ}
+        -The following tasks Was UNABLE to be Pushed to Notion:
+            {str_fail}
+                   """
+        #tk.messagebox.showinfo('Push Result:', feedback)
+        self.header.set("--Push Complete--")
+        self.description.set(feedback)
+        self.PG_ref()
         
     def DB_to_df(self,tasks_res,Profile):
         _Dict = {'TaskName' : [],'Description':[]}
@@ -140,7 +188,8 @@ class TkProgress(tk.Toplevel):
        
 
     def PG_ref(self):
-        self.PG.set( progress(self.count) )
+        self.PG_widget['value'] = self.count*100
+        self.pg_text.set(f"Current Progress: {self.PG_widget['value']}%")
         self.update()
         
     def Notion_Sync(self,share_link,Profile,callback,Misc = False):
@@ -251,8 +300,13 @@ class TkProgress(tk.Toplevel):
         else:
             pass 
         #Finally:Update Profile
-        callback(Profile,Update = True)
-        print('Profile Updated')
+        try:
+            callback(Profile,Update = True)
+            print('Profile Updated')
+        except:
+            self.header.set("ERROR,Fail to Save Changes")
+            self.description.set("ERROR! Profile not saved.")
+            self.update()
             
      
     def _draw(self):
@@ -262,10 +316,22 @@ class TkProgress(tk.Toplevel):
         header = tk.Label(self,textvariable = self.header, font = self.font)
         header.pack()
         #Progress Bar 
-        self.PG = tk.StringVar()
-        self.PG.set(progress(0))
-        self.PG_widget = tk.Label(self,textvariable = self.PG)
-        self.PG_widget.pack() 
+        # self.PG = tk.StringVar()
+        # self.PG.set(progress(0))
+        # self.PG_widget = tk.Label(self,textvariable = self.PG)
+        
+        self.PG_widget = ttk.Progressbar(
+                                self,
+                                orient='horizontal',
+                                mode='determinate',
+                                length=280
+                            )
+        self.PG_widget.pack()
+        #label
+        self.pg_text = tk.StringVar()
+        self.pg_text.set(f"Current Progress: {self.PG_widget['value']}%")
+        self.pg_lab = tk.Label(self,textvariable = self.pg_text)
+        self.pg_lab.pack()
         #Add description:
         description = tk.Label(self,textvariable = self.description, font = self.font)
         description.pack(padx = 10, pady = 10)
@@ -280,7 +346,7 @@ class remember:
     
     def __call__(self):
         return self._f(*self.args,**self.kargs)
-
+    
 def Notion_sync(share_link,Profile,TODO,Misc = False):
     if share_link[:5] != 'https': #If id avaliable 
         Parent_id = share_link
@@ -440,14 +506,18 @@ def Plan_Sep(Profile,sec = 'Time',RETURN_new_plan = False):
     Analysis = DF_Analysis(Profile.todos.Archive)
     df = Analysis.Last_n_week(1)
     Dict = dict(df.groupby('week_day').ID.apply(lambda x: [x]))
+    #Get a set of IDs in the current plan
+    planned_Task_IDs = set()
+    for wkday in Profile.okr_plan:
+        for Gtask in Profile.okr_plan[wkday]:
+            planned_Task_IDs.add(Gtask.ID)
     for i in range(7):
-        from gpk_utilities import D
         try:
 #             print(D[i+1])
 #             print(list(Dict[str(i)][0]))
             for ID in list(Dict[str(i)][0]):
                 res = Gtask_Find(ID,Null_Plan)
-                if res is not None:
+                if res is not None and ID not in planned_Task_IDs:#If belong to Plan and NOT included
                     Profile.okr_plan[D[i+1]].append(res) 
         except KeyError:
             pass
@@ -1161,12 +1231,14 @@ if __name__ == '__main__':
     
     ###Progress Test:
     #1:Prep Stack
-    share_link = 'https://www.notion.so/d28527f3285d408b88c6aa341e3dd0dc?v=1db73ea137d149cbb7b6a5e672a4dd99'
+    share_link = 'https://www.notion.so/a2fd97ec08e4471682a0cd908be2c530?v=76841c16ed47444d9d29f09acba1a6de'
     #'https://www.notion.so/511539815e434eafad25f329ed55b574?v=24f7815ecbd249819744d7fbcd6c9828'
     User_name = 'Leo_TEST'##
     file_path = f"D:\GPK\gpk_saves\\{User_name}_user_file.gpk"
     with open(file_path,'rb') as INfile:
         Profile = pickle.load(INfile)
-    kargs = {"share_link":share_link,"Profile":Profile ,"callback":None , 'Misc':True}
+    kargs = {"share_link":share_link,"Profile":Profile ,"callback":None , 'Misc':False}
     #2:
+    root = tk.Tk()
     TkProgress('Test1','Some Description','Yo','Notion_Sync',kargs)
+    root.mainloop()

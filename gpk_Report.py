@@ -10,12 +10,13 @@ from dateutil import tz
 
 
 class gpk_Report():
-    def __init__(self,Profile,doc_name,timezone = "Asia/Shanghai"):
+    def __init__(self,Profile,doc_name,path = None, timezone = "Asia/Shanghai"):
         self.Profile = Profile
         self.tz = tz.gettz(timezone)
         self.document  = docx.Document()
         self.doc_name = doc_name
-        self.path = os.getcwd() + "/Report_Pics"
+        if path is None:
+            self.path = os.getcwd() + "/Report_Pics"
         #Create a Directory 
         try:
             os.makedirs(self.path)
@@ -184,7 +185,11 @@ class gpk_Report():
         not_saved = True
         while not_saved:
             try:
-                doc.save(self.path + '/' + self.doc_name +'.docx')
+                self.save_path = tk.filedialog.asksaveasfilename(initialdir = self.path ,
+                                                                 initialfile = self.doc_name,
+                                 title = "Where would you like the report to be saved?" ,
+                                 filetypes = (("word document","*.docx"),("all files","*.*")))
+                doc.save(self.save_path + '.docx')
                 print('Report Generated')
                 not_saved = False
             except:
@@ -194,8 +199,9 @@ class gpk_Report():
         
 if __name__ == '__main__':
     #MrFAKE_user_file.gpk
-    #LEO_user_file.gpk
-    with open('LEO_user_file.gpk','rb') as INfile:
+    User_name = 'Leo_TEST'##
+    file_path = f"D:\GPK\gpk_saves\\{User_name}_user_file.gpk"
+    with open(file_path,'rb') as INfile:
         Profile = pickle.load(INfile)
     Report = gpk_Report(Profile,'OKR_Report_S3_W2')
     Report.OKR_report('Season 3 Week2')

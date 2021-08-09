@@ -13,6 +13,8 @@ from GPK_PROFILE import Gpk_ToDoList
 from gpkTask import gpk_task
 from gpk_Score import score_okr
 from gpk_recurrent import gpk_Recurrent
+
+from tkProgress import TkProgress #2021/8/2
         
 class Profile_Test:
     def __init__(self,path = None, name = None):
@@ -48,7 +50,6 @@ class gpk_to_do(tk.Frame):
         _tk_pop = True
         super().__init__()
         self.root = root
-        self.root.attributes("-fullscreen", True)  
         self.callback = callback
         self.height = geometry['height']
         self.width = geometry['width']
@@ -120,12 +121,12 @@ class gpk_to_do(tk.Frame):
         
         self.set_text_entry(Profile.todos.task_descriptions[ID] )
         
-    def If_Valid(self,ID,Name,Time,Diff,Description,ddl):
+    def If_Valid(self,ID,Name,Time,Diff,Description,ddl,title = "Fail to Create Task"):
         Profile_temp = self.Main_Profile()
         try:
             Reward = Profile_temp.todos.Reward(Time,Diff)
         except Exception as e :
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"Time and Diff must be numbers of form: 3.4 or 4")
             print(e)
           
@@ -134,14 +135,14 @@ class gpk_to_do(tk.Frame):
             gpk_task(name = Name,ID = ID,Reward = Reward,Time = Time,Difficulty = Diff,
                              Description = Description)
         except:
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"ID must be of form S_G1-1_K3")
           
             return False
         try:
             DATE(ddl)
         except:
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"Current deadline is {ddl}.\n Please Enter in format 2020-01-01")
           
             return False
@@ -254,7 +255,15 @@ class gpk_to_do(tk.Frame):
                                 parent=self))
         df = Profile_temp.todos.todos 
         idx = df[df['ID'] == ID].index[0]
-        df.at[idx,'Time'] = Time_took
+        df.at[idx,'Time'] = Time_took 
+        if not self.If_Valid(ID = ID,
+                             Name = df.at[idx,'TaskName'],
+                             Time = df.at[idx,'Time'],
+                             Diff = df.at[idx,'Difficulty'],
+                             Description = Profile_temp.todos.task_descriptions[ID],
+                             ddl = df.at[idx,'Deadline'],
+                             title= 'ILLEGAL Task, Fail to complete'):
+            return 
 #1.If In Current Load, Add as Q2 
         if Profile_temp.todos.Load.Task_Find(ID) is not None:
             Quadrant = 2
@@ -465,46 +474,15 @@ class gpk_to_do(tk.Frame):
                 self.callback(call_frame_name = 'gpk_mtk_frame')
         #8. If Applicable, Push to Notion:
         if self.sync_status2.get():
-            Succ = [] 
-            Fail = []
-            share_link = PROFILE.Notion.GPKTODO_LinkID
-            if share_link[:5] != 'https':
-                Parent_id = share_link
-            else:
-                Parent_id = None
-            for Gtask in self.PUSHLIST: #A Great Place to add Progress Bar 
-                for attr in ['Time','Reward','Difficulty']:
-                    exec(f"Gtask.{attr} = float(Gtask.{attr})")
-                Description = Gtask.Description
-                #Check For Deadline:
-                if Gtask.Deadline is None:
-                    Gtask.Deadline = str(datetime.datetime.today().date())
-                res = PROFILE.Notion.Post_Gtask(Gtask,Description = Description, 
-                                            share_link = share_link,
-                                            Parent_id = Parent_id,Misc = False)
-                if res['object'] == 'page':
-                    print(f"Task ID {Gtask.ID} pushed to notion")
-                    Succ.append((Gtask.ID,Gtask.name))
-                else:
-                    Fail.append((Gtask.ID,Gtask.name))
-            #Finally,Provide Feedback
-            str_succ = ""
-            str_fail = ""
-            for i in Succ:
-                str_succ += f'{i}\n'
-            for j in Fail:
-                str_fail += f'{j}\n'
-            feedback = f"""
-            <Sync Complete>
-            The following tasks were Pushed to Notion:
-            {str_succ}
-            The following tasks Was UNABLE to be Pushed to Notion:
-            {str_fail}
-                       """
-            tk.messagebox.showinfo('Push Result:', feedback)
+            kargs = {"PROFILE":PROFILE,"PUSHLIST":self.PUSHLIST}
+            Progress = TkProgress("Importing Tasks",
+                                  "Wait for response...",
+                                  "Description of Gtasks",
+                                  "todo_IMPORT",
+                                  kargs)
                 
                 
-        ###Notion Sync
+    ###Notion Sync Mods
     def check_notion_sync_status(self):
         "Check if Notion is set up for Misc"
         Profile = self.callback(Return = True)

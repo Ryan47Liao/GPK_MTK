@@ -6,7 +6,6 @@ from Plan_load import *
 from gpkTask import *
 import pandas as pd
 #
-from tkProgress import tkProgress
 import tkinter as tk
 
 # In[2]:
@@ -313,10 +312,11 @@ class GPK_Notion:
         #Finally
         data['parent'] = parent_value
         data['properties'] = properties_value
-        data['children'] = children_value
+        if children_value is not None:
+            data['children'] = children_value
         return Request(method = 'POST', url = url , headers = header, data = json.dumps(data) ).json()
         
-    def Post_MiscTask(self,ID,Task_Name,Time,Difficulty,Due_Date,Descriptions, Status='⏰Not started',
+    def Post_MiscTask(self,ID,Task_Name,Time,Difficulty,Due_Date,Descriptions = None, Status='⏰Not started',
                       Parent_id = None, share_link = None):
         assert not all([share_link is None,Parent_id is None]),'Either Share_link or Block_Id need not to be none'
         if Parent_id is None:
@@ -330,21 +330,24 @@ class GPK_Notion:
                 "ID": {"rich_text": [ {"text": {"content": ID}}]}
             }
         #If need to add more details:
-        children_value = [
-                {"object": "block","type": "heading_2","heading_2": {
-                "text": [{ "type": "text", "text": { "content": "Descriptions:" } }]}},
-                {   "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "text": [
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": Descriptions , }}]}}]
+        if Descriptions is not None:
+            children_value = [
+                    {"object": "block","type": "heading_2","heading_2": {
+                    "text": [{ "type": "text", "text": { "content": "Descriptions:" } }]}},
+                    {   "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "text": [
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": Descriptions , }}]}}]
+        else:
+            children_value = None
         return self.Post_page(Parent_id,Task_Name,properties_value,children_value)
         
     def Post_Task(self,Task_Name,ID,Time,Difficulty,Reward,Due_Date,
-                  Descriptions,Parent_id = None, share_link = None, 
+                  Descriptions = None ,Parent_id = None, share_link = None, 
                   Status='⏰Not started',
                  Category_D = {'P':'🎯Priority','S':'✨Special','R':'🔄Recursive'},
                  Orientation_D = {'1':'🏃🏻‍♂️Health','2':'👪Family','3':'🧗🏻‍♀️Self Development','4':'💼Career'}):
@@ -365,17 +368,20 @@ class GPK_Notion:
                 "Status" : {"select": {"name": Status}}
             }
         #If need to add more details:
-        children_value = [
-                {"object": "block","type": "heading_2","heading_2": {
-                "text": [{ "type": "text", "text": { "content": "Descriptions:" } }]}},
-                {   "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "text": [
-                            {
-                                "type": "text",
-                                "text": {
-                                    "content": Descriptions , }}]}}]
+        if Descriptions is not None:
+            children_value = [
+                    {"object": "block","type": "heading_2","heading_2": {
+                    "text": [{ "type": "text", "text": { "content": "Descriptions:" } }]}},
+                    {   "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "text": [
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": Descriptions , }}]}}]
+        else:
+            children_value  = None
         return self.Post_page(Parent_id,Task_Name,properties_value,children_value)
     
     def DB_to_df(self,tasks_res,PRINT = False, PG_show  = False):
@@ -450,17 +456,8 @@ class GPK_Notion:
             todo_stack.append(remember(temp_f,task))
         
         ###Execution:
-        if not PG_show:
-            for f in todo_stack:
-                f()
-        else:
-            PG = tkProgress('2.Importing Fetching Tasks',
-                            """
-        1. Connect to Database [Complete]
-        2. Fetch Tasks [In Progress]
-                            """,Control = False , todo_stack = todo_stack)
-            PG.mainloop()
-            PG.destroy()
+        for f in todo_stack:
+            f()
         
         print(_Dict)
         return pd.DataFrame(_Dict)

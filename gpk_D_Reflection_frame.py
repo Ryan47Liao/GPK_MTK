@@ -71,6 +71,8 @@ class D_Reflection():
         Q4_lst = list(Q4_dict.values()) 
         return Q4_lst 
     
+
+
     def Quadrant_Which(self,Q4_lst):
         "Determine Which Type of Q4 Category do you belong to"
         D = {idx+1:value for idx,value in enumerate(Q4_lst)}
@@ -266,9 +268,27 @@ class D_Reflection():
 ###Example Code:
     # fig = plt.Figure(figsize=(12,6))
     # Plot_plan_color(fig,Profile,section = 'Reward')
+    def Recur_Stat(self , Dict = None ,sec = 'Time', 
+           Orientation = {1:'Health',2:'Family',3:'Personal Development',4:'Career'}):
+        if Dict is None:
+            Dict = {i:{'Family': 0, 'Health': 0, 'Personal Development': 0, 'Career': 0} for i in D.values()}
+        else:
+            Dict = copy.copy(Dict)
+        Profile = copy.deepcopy(self.Profile)
+        df = copy.copy(Profile.gpk_Recur.todos)
+        for i in range(1,8):
+            for idx in df.index:
+                row = df.iloc[idx]
+                if i in row['Recur_At']:
+                    ORI = Orientation[ int ( row['Task Category'] ) ]
+                    Day = Dict[D[i]]
+                    Day [ORI]+= row[sec]
+        return Dict
 
     def Plot_plan_color(self,fig,df = None,section = 'Reward',
-                        dim = 111,width = 0.5,kargs = {}):
+                        dim = 111,width = 0.5, RECUR_show = True, Completed_show = True,
+                        Orientation = {1:'Health',2:'Family',3:'Personal Development',4:'Career'},
+                        kargs = {}):
         ##Suppress_Print##
             old_stdout = sys.stdout # Memorize the default stdout stream
             sys.stdout = buffer = io.StringIO()
@@ -276,8 +296,13 @@ class D_Reflection():
             Profile = copy.deepcopy(self.Profile)
             #Data Prep
             if df is None:
-                plan = Plan_Sep(Profile,section,RETURN_new_plan=1)
+                if Completed_show:
+                    plan = Plan_Sep(Profile,section,RETURN_new_plan=1)
+                else:
+                    plan = Profile.okr_plan
                 plan_dict = SEC_Stat(plan,agg = 0,sec = section)
+                if RECUR_show:
+                    plan_dict = self.Recur_Stat(plan_dict,section,Orientation)
                 df = Plan_sep_to_dict(plan_dict)
                 #display(df)
             #
@@ -290,10 +315,6 @@ class D_Reflection():
                 ax.bar(x = labels, height = list(df[sec]) , width = width, label=sec,
                       bottom = bottom)
                 bottom += np.array(df[sec]) #Get Prev as bottom
-            # ax.bar(x = labels, height = list(df['Family']) , width = width, label='Family',bottom = 0)
-            # ax.bar(x = labels, height = list(df['Personal Development']) , width = width, label='Personal Development',
-            #        bottom = list(df['Family']))
-        
         
             ax.set_ylabel(section)
             ax.set_title(f'Week Plan Section Bar by {section}')
@@ -301,6 +322,136 @@ class D_Reflection():
         ##
             sys.stdout = old_stdout
             return fig
+        
+    def RADAR_DPD(self,weekday,fig = plt.Figure(),sec = 'Time',dim = 111,Recur_Show = True,
+                  NORMALIZE = True, title = None, kargs = {}):
+        if title is None:
+            title = f'Week Progress by {sec}' 
+            if not Recur_Show: 
+                title += ' Recur_Excluded'
+        ##Suppress_Print##
+        old_stdout = sys.stdout # Memorize the default stdout stream
+        sys.stdout = buffer = io.StringIO()
+        Profile = copy.deepcopy(self.Profile)
+        ###Part 1: 
+        #0.Initialize a dict by days
+        Dict_date_status = {wkday_to_date(D[wkday]) : {'done':[],'plan':[],'ddl':[]} for wkday in range(1,8)}
+        plan_null = Fetch_plan_null(Profile.todos.Load_backup)
+    
+        #1.Fetch Done 
+        Analysis = DF_Analysis(Profile.todos.Archive)
+        for date in Dict_date_status:
+            conditions = [('date_done',lambda d: d == date),
+                                                  ('Quadrant',lambda Q: Q == 2)]
+            if not Recur_Show:
+                conditions.append(('ID',lambda ID: ID[0] != 'R')) #Filter OUT Recursive Tasks 
+                
+            temp_df = Analysis.Stack_Search(conditions) 
+            Dict_date_status[date]['done'] = Df_to_Gtask(temp_df)
+    
+        #2.Fetch Plan: 
+        planned_Task_IDs = set()
+        for wkday in Profile.okr_plan:
+            for Gtask in Profile.okr_plan[wkday]:
+                planned_Task_IDs.add(Gtask.ID)
+                    
+        for wkday in Profile.okr_plan:
+            if wkday != 'Inbox':
+                Dict_date_status[wkday_to_date(wkday)]['plan'] = Profile.okr_plan[wkday]
+                if Recur_Show: 
+                    List_of_RTask = Df_to_Gtask(Profile.gpk_Recur.task_recur_at(D_rev[wkday]))
+                    Dict_date_status[wkday_to_date(wkday)]['plan'] += List_of_RTask
+                    #Add It to Deadline Too
+                    Dict_date_status[wkday_to_date(wkday)]['ddl'] += List_of_RTask
+    
+        #3. Fetch Deadline:
+        for Gtask in plan_null['Inbox']:
+            if Gtask.Deadline is not None:
+                if Gtask.Deadline in Dict_date_status.keys():
+                    Dict_date_status[Gtask.Deadline]['ddl'].append(Gtask)
+                elif DATE(Gtask.Deadline) < DATE(wkday_to_date(D[1])):
+                    Dict_date_status[wkday_to_date(D[1])]['ddl'].append(Gtask)
+                elif  DATE(Gtask.Deadline) > DATE(wkday_to_date(D[7])):
+                    Dict_date_status[wkday_to_date(D[7])]['ddl'].append(Gtask)
+            else:
+                Dict_date_status[wkday_to_date(D[7])]['ddl'].append(Gtask)
+            #Remedy for missing plans (completed)
+            if Gtask.ID not in planned_Task_IDs: #Consider Completed 
+                print(Gtask.ID)
+                #Assume it's PLANNed Monday
+                Dict_date_status[wkday_to_date(D[1])]['plan'].append(Gtask)
+        ###Part 2:
+        #So, In order to plot this, 3 lists would be required: (At given weekday)
+        # 1.Actual Progess by Orientation
+        # 2.Planned Progress by Orientation
+        # 3.Deadline by Orientation 
+    
+        #1.Calculate total Progress
+        total = {1:0,2:0,3:0,4:0}
+        for date in Dict_date_status:
+            for Gtask in Dict_date_status[date]['ddl']:
+                Ori_id = int(Gtask.ID.split('_')[1][1])
+                total[Ori_id] += float(eval(f'Gtask.{sec}'))
+    
+        #2.Calcuate progress for each:
+        OUT = {'done':{1:0,2:0,3:0,4:0}, 'plan':{1:0,2:0,3:0,4:0}, 'ddl':{1:0,2:0,3:0,4:0}}
+        for tp in ['done', 'plan', 'ddl']:
+            for date in Dict_date_status:
+                if   DATE(date) <= DATE(wkday_to_date(D[weekday])):
+                    for Gtask in Dict_date_status[date][tp]:
+                        Ori_id = int(Gtask.ID.split('_')[1][1])
+                        OUT[tp][Ori_id] += float(eval(f'Gtask.{sec}'))
+    
+        #Finally:Normalize by Total (Deadline)
+        if NORMALIZE:
+            for tp in OUT:
+                for i in range(1,5):
+                    try:
+                        OUT[tp][i] = 100*OUT[tp][i]/total[i]
+                    except ZeroDivisionError:
+                        OUT[tp][i] = 0
+            
+        ###Part 3:
+        #Start:
+        ax = fig.add_subplot(dim,**kargs,polar=True)
+        #Data Prep:
+        actual = list(OUT['done'].values())
+        planned = list(OUT['plan'].values())
+        deadline = list(OUT['ddl'].values())
+        #assert all(i<=j for i,j in zip(stats_In , stats_out)),'Error,stats_in must be smaller than stats_out'
+    
+        labels = np.array(['Health','Family','Personal\nDev','Career'])
+        angles_out = np.linspace(0, 2*np.pi, len(labels), endpoint=False)
+        actual = np.concatenate((actual,[actual[0]]))
+        planned = np.concatenate((planned,[planned[0]]))
+        deadline = np.concatenate((deadline,[deadline[0]]))
+    
+        angles_In = np.linspace(0, 2*np.pi, len(labels), endpoint=False)
+        #stats_In = np.concatenate((actual,[actual[0]]))
+        angles_In = np.concatenate((angles_In,[angles_In[0]]))
+        print(actual)
+        print(angles_In)
+        
+        #Deadline
+        ax.plot(angles_In, deadline, '*-', linewidth=2 , color = 'red')
+        ax.fill(angles_In, deadline, alpha= 0.25 ,  color = 'red')
+        
+        #Planned
+        ax.plot(angles_In, planned, 'x--', linewidth=2 ,  color = 'blue')
+        ax.fill(angles_In, planned, alpha=0.5 ,  color = 'blue')
+
+        #Actual
+        ax.plot(angles_In, actual, 'o-', linewidth=2, color = 'orange')
+        ax.fill(angles_In, actual, alpha= 0.75 , color = 'orange')
+        
+        ax.set_thetagrids( (angles_In * 180/np.pi) [:-1] ,labels)
+        ax.legend(['Deadline','Planned Progress','Actual Progress'])
+        ###
+        ax.set_title(title)
+        ax.grid(True)
+        ##
+        sys.stdout = old_stdout
+        return fig
 
 class D_Reflection_Frame(tk.Frame):
     def __init__(self,root,geometry,callback  = None,Main = None):
@@ -376,9 +527,11 @@ class D_Reflection_Frame(tk.Frame):
         self.Frame_Forget()
         #Plotting...
         self.Sectional_Analysis(1)
-        self.Week_Progress_Radar(2)
+        #self.Week_Progress_Radar(2)
+        self.Radar_dpd(2 , section = 'Reward')
         self.Week_PlanOrientation_StackBar(3, 'Time')
         self.Week_PlanOrientation_StackBar(4, 'Reward')
+    
 
         
         
@@ -504,6 +657,17 @@ class D_Reflection_Frame(tk.Frame):
         canvas.draw()
         canvas.get_tk_widget().grid(row = 0, column = 0)
         
+# 10. Radar plot by completion,deadline and plan:
+    def Radar_dpd(self,loc,section = 'Reward'):
+        master = self.FRAME[loc]
+        fig = plt.Figure(figsize = (8.2,4.5))
+        fig =  self.R.RADAR_DPD(weekday = weekday_today(),fig = fig , sec = section, dim = 121) 
+        fig =  self.R.RADAR_DPD(weekday = weekday_today(),fig = fig , sec = section, 
+                                dim = 122 , Recur_Show = False) 
+        canvas = FigureCanvasTkAgg(fig,master)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row = 0, column = 0)
+        
     def _draw(self): 
         self.FRAME = dict()
         ###Upper Frame###
@@ -544,68 +708,68 @@ if __name__ == '__main__':
     #Profile 
     User_name = 'LEO'#'Leo_TEST'##
     file_path = f"D:\GPK\gpk_saves\\{User_name}_user_file.gpk"
-    if False:#int(input('Batch Test? 1 or 0')):
+    if True:#int(input('Batch Test? 1 or 0')):
         with open(file_path,'rb') as INfile:
             Profile = pickle.load(INfile)
         T = D_Reflection(Profile, Profile.todos.Archive)
         
-        # 1. List of Tasks done today   
-        print('\n->Checking:1. List of Tasks done today  ')
-        print(T.Analysis.SEARCH('date_done',
-                          lambda date:DATE(date) == datetime.datetime.today().date() 
-                          - datetime.timedelta(days = T.last_n_day)).head() )
-        # 2. Sectional Analysis (pie charts)   
-        print('\n->Checking:2. Sectional Analysis (pie charts)')
-        T.Analysis.Plot_Sec(n=1)
-        #T.Analysis.fig_preview()
-        # 3. Quadrant Analysis   
-        #     1. Q4 Plots:  
-        #         a.Today  
-        #         b.This Week  
-        #         c.All Time    
-        #     2. Suggestions, which type of person you are (According to 7 Habits) 
-        print('\n->Checking:3. Quadrant Analysis   ')
-        fig = plt.Figure(figsize=(10,5))
-        Q4_lst = T.Fetch_Q4_lst()
-        fig = T.Plot_Q4(fig,Q4_lst,121)
-        fig = T.Q4_Radar(fig,Q4_lst,122)
-        #display(fig)
-        T.Analysis.fig = fig 
-        T.Analysis.fig_preview()
-        _type = T.Quadrant_Which(Q4_lst)
-        Sugguestion_img = Image.open(os.getcwd() + f'/Pictures/Q4_Type{_type}.png')
-        Sugguestion_img.resize((550,260))
-        # 4. Daily Statistic comparing to the average 
-        print('\n->Checking: 4. Daily Statistic comparing to the average   ')
-        fig = plt.Figure()
-        fig = T.Plot_Comparison(fig,Profile)
-        T.Analysis.fig = fig 
-        T.Analysis.fig_preview()
-        # 5. Score changes  
-        print('\n->Checking: 5. Score changes  ')
-        T.Analysis.fig = plt.Figure()
-        T.Analysis.Plot_Score(T.Profile.todos.Load_backup)
-        T.Analysis.fig_preview()
-        # 6. Week Progress Changes  
-        print('\n->Checking: 6. Week Progress Changes  ')
-        Load_yesterday,DICT= Get_Scores(df = T.Profile.todos.Archive,Loaded = T.Profile.todos.Load_backup,
-                         target = str(datetime.datetime.today().date()),RETURN_null=1)
-        Progress = T.Progress_Collect(Load_yesterday)
-        print(Progress)
-        # 7. Week Progress Stack Bar
-        print('\n->Checking:  7. Week Progress Stack Bar ')
-        fig = plt.Figure()
-        T.Analysis.fig =  T.Plot_progress_bar(fig)
-        T.Analysis.fig_preview()
-        # 8. Week Progress Radar Plot
-        print('\n->Checking: 8. Week Progress Radar Plot')
-        fig = plt.Figure()
-        T.Analysis.fig =  T.Plot_progress_radar(fig,'Reward')
-        T.Analysis.fig_preview()
+        # # 1. List of Tasks done today   
+        # print('\n->Checking:1. List of Tasks done today  ')
+        # print(T.Analysis.SEARCH('date_done',
+        #                   lambda date:DATE(date) == datetime.datetime.today().date() 
+        #                   - datetime.timedelta(days = T.last_n_day)).head() )
+        # # 2. Sectional Analysis (pie charts)   
+        # print('\n->Checking:2. Sectional Analysis (pie charts)')
+        # T.Analysis.Plot_Sec(n=1)
+        # #T.Analysis.fig_preview()
+        # # 3. Quadrant Analysis   
+        # #     1. Q4 Plots:  
+        # #         a.Today  
+        # #         b.This Week  
+        # #         c.All Time    
+        # #     2. Suggestions, which type of person you are (According to 7 Habits) 
+        # print('\n->Checking:3. Quadrant Analysis   ')
+        # fig = plt.Figure(figsize=(10,5))
+        # Q4_lst = T.Fetch_Q4_lst()
+        # fig = T.Plot_Q4(fig,Q4_lst,121)
+        # fig = T.Q4_Radar(fig,Q4_lst,122)
+        # #display(fig)
+        # T.Analysis.fig = fig 
+        # T.Analysis.fig_preview()
+        # _type = T.Quadrant_Which(Q4_lst)
+        # Sugguestion_img = Image.open(os.getcwd() + f'/Pictures/Q4_Type{_type}.png')
+        # Sugguestion_img.resize((550,260))
+        # # 4. Daily Statistic comparing to the average 
+        # print('\n->Checking: 4. Daily Statistic comparing to the average   ')
+        # fig = plt.Figure()
+        # fig = T.Plot_Comparison(fig,Profile)
+        # T.Analysis.fig = fig 
+        # T.Analysis.fig_preview()
+        # # 5. Score changes  
+        # print('\n->Checking: 5. Score changes  ')
+        # T.Analysis.fig = plt.Figure()
+        # T.Analysis.Plot_Score(T.Profile.todos.Load_backup)
+        # T.Analysis.fig_preview()
+        # # 6. Week Progress Changes  
+        # print('\n->Checking: 6. Week Progress Changes  ')
+        # Load_yesterday,DICT= Get_Scores(df = T.Profile.todos.Archive,Loaded = T.Profile.todos.Load_backup,
+        #                  target = str(datetime.datetime.today().date()),RETURN_null=1)
+        # Progress = T.Progress_Collect(Load_yesterday)
+        # print(Progress)
+        # # 7. Week Progress Stack Bar
+        # print('\n->Checking:  7. Week Progress Stack Bar ')
+        # fig = plt.Figure()
+        # T.Analysis.fig =  T.Plot_progress_bar(fig)
+        # T.Analysis.fig_preview()
+        # # 8. Week Progress Radar Plot
+        # print('\n->Checking: 8. Week Progress Radar Plot')
+        # fig = plt.Figure()
+        # T.Analysis.fig =  T.Plot_progress_radar(fig,'Reward')
+        # T.Analysis.fig_preview()
         # 9. Week Plan Orientation Stack Bar 
         print('\n->Checking:9. Week Plan Orientation Stack Bar ')
         fig = plt.Figure()
-        T.Analysis.fig =  T.Plot_plan_color(fig,section = 'Reward')
+        T.Analysis.fig =  T.RADAR_DPD(2,fig,NORMALIZE = True,sec = 'Reward')
         T.Analysis.fig_preview()
     else:
         root = tk.Tk()

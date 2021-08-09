@@ -12,6 +12,9 @@ from tkList import tkLIST
 from gpk_recurrent import gpk_Recur_frame
 from gpk_Report import gpk_Report
 
+#New:
+from gpk_D_Reflection_frame import *
+
 class gpk_weekView(tk.Frame):
     def __init__(self,root,geometry,callback  = None,Main = None):
         super().__init__()
@@ -113,10 +116,7 @@ class gpk_weekView(tk.Frame):
                                                 prompt = 'Please Specify Season and Date.E.g: Season3_Week2')
         if title is not None:
             Report = gpk_Report(self.callback(Return = True),"OKR_"+title+"Report")
-            Report.OKR_report(title)
-            tk.filedialog.askopenfile(mode="r", initialdir = Report.path)
-
-            
+            Report.OKR_report(title)            
         
     def _draw(self):
         #__________________LeftFrame_____________________#
@@ -349,7 +349,7 @@ class gpk_weekPlanning(tk.Frame):
         self.callback(Profile,Update = True)
         self.Get_Option()
         self.LB_Ref()
-        self.CF_update(master = self.RightFrame ) 
+        self.CF_update(master = self.CF ) 
         
     def IMPORT(self):
         #Update Profile
@@ -409,10 +409,10 @@ class gpk_weekPlanning(tk.Frame):
         "Create a Canvas Frame"
         self.Canvas_height_coef = 3/4 
         self.Canvas_width_coef = 2/3
-        self.Canvas_Frame = tk.Frame( master = master, bd = 30 )##, bg = 'green')
+        self.Canvas_Frame = tk.Frame( master = master, bd = 0 )##, bg = 'green')
         self.Canvas_Frame.configure(height = self.Canvas_height_coef*self.height,
                                   width = self.Canvas_width_coef*self.width)
-        self.Canvas_Frame.config(highlightbackground="black" , highlightthickness=2)
+        self.Canvas_Frame.config(highlightbackground="black" , highlightthickness= 2)
         self.Canvas_Frame.pack(side = tk.TOP, anchor = 'n')
         
     def CF_update(self , master ):
@@ -426,15 +426,23 @@ class gpk_weekPlanning(tk.Frame):
         df = Plan_to_df(PROFILE) 
         self.Analysis.Set_df(df)
         self.Analysis.Rest_fig() 
-        self.Analysis.Plot_DateFrame(Group = 'Plan_at',
-                                     title = 'Time(Top)/Reward(Buttom) Dist of Current Plan',dim = 211,short = True)
-        self.Analysis.Plot_DateFrame(Group = 'Plan_at',sec = 'Reward',
-                                     title = '',dim = 212,short = True)
+    ##OLD
+        # self.Analysis.Plot_DateFrame(Group = 'Plan_at',
+        #                              title = 'Time(Top)/Reward(Buttom) Dist of Current Plan',dim = 211,short = True)
+        # self.Analysis.Plot_DateFrame(Group = 'Plan_at',sec = 'Reward',
+        #                              title = '',dim = 212,short = True)
         # self.Analysis.Plot_Sec(sec = 'weight', dim = 211, title = 'Weight Distribution')
         # self.Analysis.Plot_Sec(sec = 'weight', df = df[df['Task_Type'] == self.View.get()],
         #                        dim = 212 ,  title = f'Weight Dist of {self.View.get()}')
         #Finally:
-        self.fig = self.Analysis.get_fig()
+        #self.fig = self.Analysis.get_fig()
+    ###NEW:Agg Plot
+        T = D_Reflection(PROFILE, PROFILE.todos.Archive)
+        fig = plt.Figure(figsize = (11,4))
+        self.fig = T.Plot_plan_color(fig,section = 'Time', 
+                                     RECUR_show= self.Recur_show.get(),
+                                     Completed_show = self.Completed_show.get())
+    ###Finally:
         self.canvas = FigureCanvasTkAgg(self.fig,self.Canvas_Frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side = tk.TOP, anchor = 'n')
@@ -484,9 +492,19 @@ class gpk_weekPlanning(tk.Frame):
                 ### Buttons 
 ###SPACER
         self.spacer = tk.Label(master = self.Control_Frame,text = "",
-                               padx = 75)
+                               padx = 35)
         self.spacer.grid(row = 0,column = 0)
-                    #### Move Buttons
+    ### Plot Filter:
+        self.Recur_show = tk.IntVar()
+        self.Rec_show_ckbx = tk.Checkbutton(self.Control_Frame,text = 'Show Recursive Tasks', variable = self.Recur_show,
+                                            command = lambda:self.CF_update(master = self.CF ) )
+        self.Rec_show_ckbx.grid(row = 0,column = 1)
+        self.Completed_show = tk.IntVar()
+        self.Completed_show_ckbx = tk.Checkbutton(self.Control_Frame,text = 'Show Completed Goals', 
+                                                  variable = self.Completed_show,
+                                                  command = lambda:self.CF_update(master = self.CF ) )
+        self.Completed_show_ckbx.grid(row = 0,column = 2, padx = 10)
+                #### Move Buttons
         self.Import_btn = tk.Button(self.Control_Frame,text = 'Import OKRLOG',
                                     font = ('times new roman',20))
         self.Import_btn.config(command = self.IMPORT)
