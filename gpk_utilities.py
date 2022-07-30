@@ -1190,7 +1190,7 @@ class Gpk_ToDoList:
         if RETURN:
             return
         else:
-            self.todos = self.todos.append(task, ignore_index=True)
+            self.todos = pd.concat([self.todos,task])#self.todos.append(task, ignore_index=True)
             
     def add_gpkTask(self,Gtask):
         self.add(task_name = Gtask.name,task_ID = Gtask.ID,
