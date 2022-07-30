@@ -80,7 +80,7 @@ class GPK_Notion:
         self.token = token
         self.share_link = share_link
         
-    def Set_token(token):
+    def Set_token(self,token):
         self.token = token
         
     @staticmethod

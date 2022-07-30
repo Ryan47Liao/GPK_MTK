@@ -72,13 +72,13 @@ class Tetris:
             if 0 <= column < self.Columns and 0 <= row < self.Rows: self.draw_blocks(canvas,n,m,color)
     
     def horizontal_move_faller(self,event):
-        if current_faller is None: return
+        if self.current_faller is None: return
         direction = [0,0]
         if event.keysym == "Left": direction = [-1, 0]
         elif event.keysym == 'Right': direction = [1, 0]
         else: return
-        if check_availablity(current_faller, direction):
-            draw_fallers_move(self.canvas, current_faller, direction)
+        if self.check_availablity(self.current_faller, direction):
+            self.draw_fallers_move(self.canvas, self.current_faller, direction)
             
     def draw_fallers_move(self, canvas, faller, direction):
         faller_type = faller["Type"]

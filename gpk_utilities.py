@@ -14,6 +14,7 @@ import sys
 from gpk_Score import *
 from GPK_Notion import GPK_Notion
 from Plan_load import *
+from gpkTask import gpk_task
      
 D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
 D_rev = {v:k for k,v in D.items()}

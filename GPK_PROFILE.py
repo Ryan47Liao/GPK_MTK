@@ -14,7 +14,7 @@ import copy
 from gpkTask import gpk_task
 from GPK_MTK import GPK_MTK
 from mtk_planning import GPK_MTK_Plan
-# In[10]:
+import tkinter as tk
 from gpk_utilities import *
 
 class PROFILE:
@@ -66,7 +66,6 @@ class PROFILE:
                     __Allow_save = True
                 except:
                     __Allow_save = False
-                    import tkinter as tk
                     tk.messagebox.showwarning(title = 'WARNING!!!Save Fatal Error!!!'
                                               , message = 'CLOSE PROGRAM IMMEDIATELY or YOU MAY LOSE ALL SAVEs')
             #ACTUAL SAVE
