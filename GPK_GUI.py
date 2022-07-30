@@ -39,9 +39,12 @@ class gpk_Shell:
         self.Profile = None
         self.parent_address = "D:/GPK/gpk_saves/"
         try:
-            os.makedirs(self.parent_address) 
-        except FileExistsError:
-            pass
+            os.makedirs(self.parent_address)
+        except:
+            try:
+                self.parent_address = "C:/GPK/gpk_saves/"
+            except FileExistsError:
+                pass
                     
         #_________Finally_________#
         #Fetch Cache 
