@@ -7,7 +7,7 @@ from Plan_load import task
 
 class gpk_task(task):
     def __init__(self,name,notes = None,
-                 sections = {1:'Health',2:'Family',3:'Personal Development',4:'Carrer',5:'other'},
+                 sections = {1:'Health',2:'Family',3:'Personal Development',4:'Career',5:'other'},
                  **kargs):
         """
         **kargs:
@@ -16,7 +16,9 @@ class gpk_task(task):
         -Time
         -Difficulty
         -Description
+        -Deadline 
         """
+        self.Deadline = None #Default no Deadline
         self.name = name 
         self.note = notes
         self.SECTIONs = sections
@@ -34,6 +36,7 @@ class gpk_task(task):
                 self.Time = kargs['Time']
                 self.Difficulty = kargs['Difficulty']
                 self.Description= kargs['Description']
+                self.Deadline = kargs['Deadline']
             except Exception as e:
                 print(e)
         self.ID_intepret()
@@ -48,7 +51,12 @@ class gpk_task(task):
             self.category = 'Recurrent'
         elif category.upper() == 'P':
             self.category = 'Priority'
-        section = int(self.ID.split("_")[1][1])
+        try:
+            section = int(self.ID.split("_")[1][1])
+        except:
+            from tkinter import messagebox
+            messagebox.showerror(title = 'ID Error',
+                                 message = f'ID {self.ID} does not follow format: S_G??-??_K??') 
         self.section = self.SECTIONs[section]
         self.Kr_Id = self.ID.split("_")[2][-1]
         
@@ -56,13 +64,13 @@ class gpk_task(task):
         return f"""
 ID:{self.ID}
 
-[Reward]
+`Reward`
 {str(float_str(self.Reward,"$"))}
-[Time]
+`Time`
 {str(float_str(self.Time))}
-[Difficulty]
+`Difficulty`
 {str(float_str(self.Difficulty))}
-[Description]
+`Description`
 {self.Description}
                """
     

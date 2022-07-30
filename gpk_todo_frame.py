@@ -12,6 +12,9 @@ from GPK_PROFILE import PROFILE
 from GPK_PROFILE import Gpk_ToDoList
 from gpkTask import gpk_task
 from gpk_Score import score_okr
+from gpk_recurrent import gpk_Recurrent
+
+from tkProgress import TkProgress #2021/8/2
         
 class Profile_Test:
     def __init__(self,path = None, name = None):
@@ -43,14 +46,14 @@ class Profile_Test:
                 pass
 
 class gpk_to_do(tk.Frame):
-    def __init__(self,root,geometry,callback  = None):
+    def __init__(self,root,geometry,callback  = None,MAIN = None):
         _tk_pop = True
         super().__init__()
         self.root = root
-        self.root.attributes("-fullscreen", True)  
         self.callback = callback
         self.height = geometry['height']
         self.width = geometry['width']
+        self.Main = MAIN
         self.Analysis = DF_Analysis(df = self.Main_Profile().todos.todos,
                                     figsize = (12,3))
         self._draw()
@@ -62,6 +65,15 @@ class gpk_to_do(tk.Frame):
     def Main_Profile(self):
         if self.callback is not None:
             return self.callback(Return = True)
+    
+    def Delete_ALL(self):
+        "Empty The entire todo list"
+        if messagebox.askokcancel('Delete all tasks', 'WARNING!Are you sure you want to empty the entire todo list?'):
+            Profile_temp = self.Main_Profile() 
+            Profile_temp.todos._todo_init()
+            self.callback(Profile = Profile_temp, Update = True)
+            self.todo_tree_update()
+            self.todo_summary()
         
     def todo_tree_update(self):
         try:
@@ -99,7 +111,7 @@ class gpk_to_do(tk.Frame):
             self.set_text_entry("")
         
     def task_info_update(self):
-        "Update the Enties of Task info based on tree index"
+        "Update the Entry of Task info based on tree index"
         Profile = self.Main_Profile()
         
         self.entry_clear()
@@ -118,12 +130,12 @@ class gpk_to_do(tk.Frame):
         
         self.set_text_entry(Profile.todos.task_descriptions[ID] )
         
-    def If_Valid(self,ID,Name,Time,Diff,Description,ddl):
+    def If_Valid(self,ID,Name,Time,Diff,Description,ddl,title = "Fail to Create Task"):
         Profile_temp = self.Main_Profile()
         try:
             Reward = Profile_temp.todos.Reward(Time,Diff)
         except Exception as e :
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"Time and Diff must be numbers of form: 3.4 or 4")
             print(e)
           
@@ -132,14 +144,14 @@ class gpk_to_do(tk.Frame):
             gpk_task(name = Name,ID = ID,Reward = Reward,Time = Time,Difficulty = Diff,
                              Description = Description)
         except:
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"ID must be of form S_G1-1_K3")
           
             return False
         try:
             DATE(ddl)
         except:
-            getattr(messagebox,'showwarning')("Fail to Create Task",
+            getattr(messagebox,'showwarning')(title,
                         f"Current deadline is {ddl}.\n Please Enter in format 2020-01-01")
           
             return False
@@ -152,18 +164,45 @@ class gpk_to_do(tk.Frame):
         Name =  self.name_entry.get()
         Time = float(self.time_entry.get())
         Diff = float(self.Dif_entry.get())
-        ddl  = self.deadline_entry.get()
+        try:
+            ddl  = str(DATE(self.deadline_entry.get()))
+        except:
+            messagebox.showerror('Wrong Date format', 
+                                 f'deadline {self.deadline_entry.get()} was of wrong format,must be: yyyy-mm-dd')
+            return
         Description = self.get_text_entry()
-        if ddl is None:
-            ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
-            self.deadline_entry.insert(0,ddl)
         if self.If_Valid(ID,Name,Time,Diff,Description,ddl):
             print("Task Valid, Creating Task")
             #1.5:Update File
             Profile_temp = self.Main_Profile()
-            Profile_temp.todos.delete("S_G0-0_K0")
+            try:
+                Profile_temp.todos.delete("S_G0-0_K0") #In case of creating a new task
+            except:
+                pass 
+            #R_G0-0_K0
+            try:
+                Profile_temp.todos.delete("R_G0-0_K0") #In case of creating a new RECURSIVE task
+            except:
+                pass 
             Profile_temp.todos.edit(Name,ID,Time,Diff,Description,ddl)
-            self.callback(Profile = Profile_temp, Update = True)
+            if ID[0] == 'R':
+                #Add Task to the recursive setting: 
+                Reward = Profile_temp.todos.Reward(Time,Diff)
+                Gtask = gpk_task(name = Name,ID = ID, 
+                                 Time = Time, Reward = Reward, Difficulty = Diff ,Description = Description)
+                try:
+                    Profile_temp.gpk_Recur.add_gpkTask(Gtask)
+                except AttributeError:
+                    print("Recursive Task Initializing...")
+                    Profile_temp.gpk_Recur = gpk_Recurrent()
+                    Profile_temp.gpk_Recur.add_gpkTask(Gtask)
+                finally:
+                    self.callback(Profile = Profile_temp, Update = True)
+                    self.Main.gpk_Recur_frame.Refresh_cb()
+                    self.callback(call_frame_name = 'gpk_Recur_frame')
+                    
+            else:
+                self.callback(Profile = Profile_temp, Update = True)
             #2.Reload Tree
             self.todo_tree_update()
             #3.Update Summary
@@ -225,9 +264,24 @@ class gpk_to_do(tk.Frame):
                                 parent=self))
         df = Profile_temp.todos.todos 
         idx = df[df['ID'] == ID].index[0]
-        df.at[idx,'Time'] = Time_took
+        df.at[idx,'Time'] = Time_took 
+        if not self.If_Valid(ID = ID,
+                             Name = df.at[idx,'TaskName'],
+                             Time = df.at[idx,'Time'],
+                             Diff = df.at[idx,'Difficulty'],
+                             Description = Profile_temp.todos.task_descriptions[ID],
+                             ddl = df.at[idx,'Deadline'],
+                             title= 'ILLEGAL Task, Fail to complete'):
+            return 
+#1.If In Current Load, Add as Q2 
+        if Profile_temp.todos.Load.Task_Find(ID) is not None:
+            Quadrant = 2
+        else:
+            Quadrant = 1
+#2.If NOT In Current Load, Add as Q1 
+#3. Q3/4 are not recorded here 
         #3.Complete Task
-        Profile_temp.todos.complete(ID)
+        Profile_temp.todos.complete(ID,Quadrant)
         try:
             Profile_temp.todos.Load.complete(ID,tk_pop = True)
         except Exception as e:
@@ -345,57 +399,66 @@ class gpk_to_do(tk.Frame):
         
     def IMPORT(self):
         "Fetch Tasks from okr_plan"
-        #1.Check if okr_plan is setup, warn otherwise
         try:
-            PROFILE = self.callback(Return = True)
-            Plan = PROFILE.okr_plan 
-        except AttributeError:
-            if getattr(messagebox,'askokcancel()')("Error!OKR Plan Not Set Up",
-            f"Would you like to set up the Plan for this week?"):
-                self.callback(call_frame_name  = 'gpk_weekPlanning')
-            return     
-        #2.Fetch tasks planned today as PUSHLIST
-        D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
-        wkday = D[weekday_today()]
-        self.PUSHLIST = copy.deepcopy(Plan[wkday]) #a List of Gtasks 
-#***2.5 Add Recursive Tasks to PUSHLIST
-#!!!2.6 Check if Profile.Recur is defined: 
-        try:
-            RECUR = PROFILE.gpk_Recur
-            List_recur = Df_to_Gtask(RECUR.task_recur_at(weekday_today()).drop('Recur_At',axis = 1)) 
-            self.PUSHLIST = [*self.PUSHLIST, *List_recur]
-        except AttributeError: 
-            Plan_recur = Fetch_plan_null(PROFILE.todos.Load,'Recursive_Task') 
-            self.PUSHLIST = [*self.PUSHLIST, *Plan_recur['Inbox']]
-        #3.Identify the tasks in the Archive, remove them from the PUSHLIST
-        Analysis = DF_Analysis(PROFILE.todos.Archive)
-        #Filter the Special Tasks:
-        IDs_Done = list(Analysis.Last_n_day(7)['ID'])
-        for Gtask in copy.copy(self.PUSHLIST):
-            if Gtask.ID[0] != 'R' and Gtask.ID in IDs_Done:
-                self.PUSHLIST.remove(Gtask)
-                print(f'Task ID {Gtask.ID} removed since recent completion')
-        #Filter the Recursive Tasks:
-        IDs_Done = list(Analysis.Last_n_day(0)['ID']) #Done Today
-        for Gtask in copy.copy(self.PUSHLIST):
-            if Gtask.ID in IDs_Done:
-                self.PUSHLIST.remove(Gtask)
-                print(f'Task ID {Gtask.ID} removed since recent completion')
-           
-        #3.5: Identify the tasks in the todolist ,remove them from the PUSHLIST
-        IDs_exist = list(PROFILE.todos.todos['ID'])
-        for Gtask in self.PUSHLIST:
-            if Gtask.ID in IDs_exist:
-                self.PUSHLIST.remove(Gtask)
-                print(f'Task ID {Gtask.ID} removed since Existing Task')
-        #4.Push all tasks from PUSHLIST into todo list (The method automatically filter same ID) 
-        for Gtask in self.PUSHLIST:
-            PROFILE.todos.add_gpkTask(Gtask)
-        self.callback(PROFILE,Update = True)
-        #5.Reload Tree
-        self.todo_tree_update()
-        #6.Update Summary
-        self.todo_summary()
+            #1.Check if okr_plan is setup, warn otherwise
+            try:
+                PROFILE = self.callback(Return = True)
+                Plan = PROFILE.okr_plan 
+            except AttributeError:
+                if getattr(messagebox,'askokcancel()')("Error!OKR Plan Not Set Up",
+                f"Would you like to set up the Plan for this week?"):
+                    self.callback(call_frame_name  = 'gpk_weekPlanning')
+                return     
+            #2.Fetch tasks planned today as PUSHLIST
+            D = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
+            wkday = D[weekday_today()]
+            self.PUSHLIST = copy.deepcopy(Plan[wkday]) #a List of Gtasks 
+    #***2.5 Add Recursive Tasks to PUSHLIST
+    #!!!2.6 Check if Profile.Recur is defined: 
+            try:
+                RECUR = PROFILE.gpk_Recur
+                List_recur = Df_to_Gtask(RECUR.task_recur_at(weekday_today()).drop('Recur_At',axis = 1)) 
+                self.PUSHLIST = [*self.PUSHLIST, *List_recur]
+            except AttributeError: 
+                Plan_recur = Fetch_plan_null(PROFILE.todos.Load,'Recursive_Task') 
+                self.PUSHLIST = [*self.PUSHLIST, *Plan_recur['Inbox']]
+            #3.Identify the tasks in the Archive, remove them from the PUSHLIST
+            Analysis = DF_Analysis(PROFILE.todos.Archive)
+            #Filter the Special Tasks:
+            try:
+                IDs_Done = list(Analysis.Last_n_week(1)['ID']) 
+                for Gtask in copy.copy(self.PUSHLIST):
+                    if Gtask.ID[0] != 'R' and Gtask.ID in IDs_Done:
+                        self.PUSHLIST.remove(Gtask)
+                        print(f'Task ID {Gtask.ID} removed since recent completion')
+                #Filter the Recursive Tasks:
+                IDs_Done = list(Analysis.Last_n_day(0)['ID']) #Done Today
+                for Gtask in copy.copy(self.PUSHLIST):
+                    if Gtask.ID in IDs_Done:
+                        self.PUSHLIST.remove(Gtask)
+                        print(f'Task ID {Gtask.ID} removed since recent completion')
+            except: #When the archive is empty 
+                IDs_Done = []               
+            #3.5: Identify the tasks in the todolist ,remove them from the PUSHLIST
+            try:
+                IDs_exist = list(PROFILE.todos.todos['ID'])
+                for Gtask in copy.copy(self.PUSHLIST):
+                    if Gtask.ID in IDs_exist:
+                        self.PUSHLIST.remove(Gtask)
+                        print(f'Task ID {Gtask.ID} removed since Existing Task')
+            except:#When there is Nothing in the todo
+                IDs_exist = [ ] 
+            #4.Push all tasks from PUSHLIST into todo list (The method automatically filter same ID) 
+            for Gtask in self.PUSHLIST:
+                PROFILE.todos.add_gpkTask(Gtask)
+            self.callback(PROFILE,Update = True)
+            #5.Reload Tree
+            self.todo_tree_update()
+            #6.Update Summary
+            self.todo_summary()
+        except Exception as e:
+            #Unexpected:
+            messagebox.showerror('Import Error', f'Fail to Import due to unknown errors: \n {e}')
         
         #7.If Applicable,Sync with MTK:
         if self.sync_status.get():
@@ -423,7 +486,81 @@ class gpk_to_do(tk.Frame):
                 getattr(messagebox,'showwarning')("Wrong Project",
                         f"Current Project is {current_project}.\n Please first select (or create) Project MTK_OKR in the Week Panel first.")
                 self.callback(call_frame_name = 'gpk_mtk_frame')
-            
+        #8. If Applicable, Push to Notion:
+        if self.sync_status_notion.get():
+            kargs = {"PROFILE":PROFILE,"PUSHLIST":self.PUSHLIST}
+            Progress = TkProgress("Importing Tasks",
+                                  "Wait for response...",
+                                  "Description of Gtasks",
+                                  "todo_IMPORT",
+                                  kargs)
+                
+                
+    ###Notion Sync Mods
+    def check_notion_sync_status(self):
+        "Check if Notion is set up for Misc"
+        Profile = self.callback(Return = True)
+        #1. See if Notion is Created
+        try:
+            share_link = Profile.Notion.GPKTODO_LinkID
+            if share_link[:5] != 'https':
+                database_id = share_link
+                share_link = None
+            else:
+                database_id = None
+            database_id
+            res = Profile.Notion.Get_DataBase(share_link,database_id) 
+            print(res)
+            if res['object'] == 'error':
+                self.sync_status_notion.set(0)
+                tk.messagebox.showerror('GPKTODO fail to set up','1.Make sure token is valid;\n 2. Make sure the GPKTODO-sharelink is correctly set up') 
+                self.callback(call_frame_name = 'gpk_notion_frame')
+                self.Main.gpk_notion_frame.GPK_Notion_Frame()
+        except:
+            self.sync_status_notion.set(0)
+            tk.messagebox.showerror('Misc Not Set up','Please set up GPKTODO first') 
+            self.callback(call_frame_name = 'gpk_notion_frame')
+            self.Main.gpk_notion_frame.GPK_Notion_Frame()
+        
+    def notion_sync(self,show_progress = True):
+        "Sync with Notion"
+        if self.sync_status_notion.get():
+            #try:
+            Profile = self.callback(Return = True)
+            share_link = Profile.Notion.GPKTODO_LinkID
+            # Profile_Updated = Notion_sync(share_link,
+            #                                    Profile,Profile.todos,Misc = False)
+            kargs = {"share_link":share_link,"Profile":Profile ,
+                     "callback": self.callback , 'Misc':False, 'Details':self.sync_detail.get()}
+            TkProgress('Syncing With Notion GPKTODO',
+                       'Initiatingn Sync',
+                       'Description',
+                       f_name = 'Notion_Sync',
+                       kargs = kargs, show_progress = show_progress) 
+            #Update Profile
+            #self.callback(Profile_Updated,Update = True)
+            #Refresh 
+            self.todo_tree_update()
+            self.todo_summary()
+            #except:
+                #pass  
+        else:
+            tk.messagebox.showwarning("Notion Sync Offline",
+                                      "Check the Box on the left to enable it")
+                     
+    def _Sync_auto(self,n = 60):#2021/11/24
+        "Sync with Notion every n seconds"
+        #1.Try check connection:
+        if self.sync_status_notion.get():
+            if  self._Notion_sync_auto.get():
+                print('SYNC with Notion...')
+                self.notion_sync(show_progress = False)
+                print(f"\t<<Todo list Synced @ {datetime.datetime.now()}>>")
+                self.root.after(1000*n, lambda:self._Sync_auto(n))
+        else:
+            tk.messagebox.showwarning("Notion Sync Offline",
+                          "Check the Box on the left to enable it")
+            self._Notion_sync_auto.set(False)
     
     def _draw(self):
         ###Upper Frame###
@@ -471,7 +608,7 @@ class gpk_to_do(tk.Frame):
         self.Id_label.grid(padx = 5, pady = 10, row = base + 0, column = 0)
         self.Id_entry.grid(padx = 5, pady = 10,row = base +0, column = 1 )
         self.name_label.grid(padx = 5, pady = 10,row = base +1, column = 0)
-        self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1,ipadx = 30)
+        self.name_entry.grid(padx = 5, pady = 10,row =base + 1, column = 1,ipadx = 100)
         self.time_label .grid(padx = 5, pady = 10,row = base +2, column = 0)
         self.time_entry.grid(padx = 5, pady = 10,row = base +2, column = 1)
         self.Dif_label.grid(padx = 5, pady = 10,row = base +3, column = 0)
@@ -510,9 +647,9 @@ class gpk_to_do(tk.Frame):
         self.controlFrame.grid_propagate(0)
         self.controlFrame.pack(side = tk.LEFT )
         # 
-#self.spacer2 = tk.Label(master =self.controlFrame)
-        self.spacer = tk.Label(master = self.controlFrame, text = '')
-        self.spacer.grid(row = 0,column = 0 , pady = 20, columnspan = 2)
+
+        # self.spacer = tk.Label(master = self.controlFrame, text = '')
+        # self.spacer.grid(row = 0,column = 0 , pady = 15, columnspan = 2)
         self.import_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/Import_icon.png"))
         self.Import_btn = tk.Button(self.controlFrame,image = self.import_img)
         self.Import_btn.config(command = self.IMPORT)
@@ -525,28 +662,55 @@ class gpk_to_do(tk.Frame):
         self.Delete_btn = tk.Button(master =self.controlFrame, image = self.img_del, command = self.delete)
         self.img_complete = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/task_complete.png"))
         self.Complete_btn = tk.Button(master =self.controlFrame, image  =  self.img_complete , command = self.complete)
+        self.delete_all_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/data_delete.png").resize((50,50), Image.ANTIALIAS))
+        self.delete_all_btn = tk.Button(master =self.controlFrame, image  =  self.delete_all_img , command = self.Delete_ALL)
         #Set Location for the buttons 
-        #self.spacer2.grid(padx = 160, row =  ,column = 0 )
+        self.spacer = tk.Label(master =self.controlFrame)
+        self.spacer.grid(padx = (1/60)*self.width, pady = (1/60)*self.height, row = 0 ,column = 0 )
         
         self.Submit_btn.grid(padx = 20, row = 1, column = 3)
         self.Add_btn.grid(padx = 20,row = 1, column = 2)
-        self.Delete_btn.grid(padx = 20,row = 1, column = 1)
-        self.Complete_btn.grid(pady = 20, row = 2, column = 1,columnspan = 3)
+        self.Delete_btn.grid(padx = 20,row = 1, column = 1) 
+        self.delete_all_btn.grid(padx = 20,row = 2, column = 3) #2021/11/23
+        self.Complete_btn.grid(pady = 10, row = 2, column = 1,columnspan = 2)
         self.Import_btn.grid(padx = 20, row = 3, column = 1,columnspan = 3)
         
         #Add Mtk Sync Status 
         self.sync_status = tk.IntVar()
         self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status,
                                         onvalue=1, offvalue=0, command = self.check_mtk_sync_status)
-        self.sync_chbx.grid(padx = 20,row = 4, column = 1)
+       #self.sync_chbx.grid(padx = 20,row = 4, column = 1)
         self.rmchbox_label = tk.Label (self.controlFrame,text = "MTK SYNC")
-        self.rmchbox_label.grid(row = 4, column = 2)
+        #self.rmchbox_label.grid(row = 4, column = 2)
         #Add Sync Button 
         self.sync_ref_img = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
         self.SYNC_btn = tk.Button(master =self.controlFrame, image  =  self.sync_ref_img , 
                                   command = self.mtk_sync)
-        self.SYNC_btn.grid(pady = 20, row = 4, column = 3)
+        #self.SYNC_btn.grid(pady = 10, row = 4, column = 3)
         
+        #Add Notion Sync Status 
+        self.sync_status_notion = tk.IntVar()
+        self.sync_chbx = tk.Checkbutton(self.controlFrame, variable =self.sync_status_notion,
+                                        onvalue=1, offvalue=0, command = self.check_notion_sync_status)
+        self.sync_chbx.grid(padx = 20,row = 5, column = 1)
+        self.rmchbox_label = tk.Label (self.controlFrame,text = "NOTION SYNC")
+        self.rmchbox_label.grid(row = 5, column = 2)
+        #Add Sync Button 
+        self.sync_ref_img2 = ImageTk.PhotoImage(Image.open(os.getcwd() + "/Pictures/sync_refresh.ico"))
+        self.SYNC_btn = tk.Button(master =self.controlFrame, image  =  self.sync_ref_img2 , 
+                                  command = self.notion_sync)
+        self.SYNC_btn.grid(pady = 0, row = 5, column = 3)
+        
+        #Add Detail Toggle
+        self.sync_detail = tk.BooleanVar()
+        self.Sync_Detail_chbx = tk.Checkbutton(self.controlFrame,text = "Sync Description",variable =self.sync_detail,onvalue=1, offvalue=0)
+        self.Sync_Detail_chbx.grid(pady = 0, row = 6, column = 2)
+        
+        #Auto Sync 
+        self._Notion_sync_auto = tk.BooleanVar()
+        self.Sync_auto_chbx = tk.Checkbutton(self.controlFrame,text = "Refresh every 60s",variable =self._Notion_sync_auto,onvalue=1, offvalue=0,
+                                             command = self._Sync_auto)
+        self.Sync_auto_chbx.grid(pady = 0, row = 7, column = 2)
         
 if __name__ == '__main__':
     root = tk.Tk()

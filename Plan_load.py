@@ -1,6 +1,16 @@
 import docx
 import random 
 from dateutil import tz
+import requests
+import urllib, json
+from time import sleep
+from tkinter import messagebox
+
+def Lst_to_str(Lst):
+    out = ""
+    for i in Lst:
+        out += i 
+    return out 
 
 def weekday_today(timezone = tz.gettz("Asia/Shanghai")):
     from datetime import datetime
@@ -39,19 +49,33 @@ def box_print(text,thickness=1,syms_h ="~",syms_v ="|",to_print = True,n_unicode
         return
     return string
 
-
-# In[4]:
-
-
 class Load:
     "This class is dedicated to load information of OKR weekly logs"
     def __init__(self,file_path):
-        global Authorized 
+        self.Authorized = True
         text = getText(file_path)
         self.log_list = []
         self.week_log = []
         for i in text.split("\n"):
             self.log_list.append(i.strip())  
+            
+    def Task_Find(self,ID,Load = None):
+        "Return the Goal Object based on ID"
+        if Load is None:
+            Load = self
+        def find(G_ID,category):
+            nonlocal Load
+            for task in eval(f'Load.WeekObjective.{category}'):
+                if G_ID == task.Objective.split(':')[0]:
+                    return task
+        Category = ID[0]
+        G_ID = ID.split("_")[1]
+        if Category == 'P':
+            return find(G_ID,'Priority_Task')
+        elif Category == 'S':
+            return find(G_ID,'Special_Task')
+        elif Category == 'R':
+            return find(G_ID,'Recursive_Task')
     
     def add_okr(self,text_in_format):
         try:
@@ -60,30 +84,36 @@ class Load:
             print("WeekObjective not loaded")
         
     def get_week_objective(self):
-        global Authorized 
         "Load WeekObjectives into self.WeekObjective"
         self.WeekObjective = Day()
         try:
-            self.WeekObjective.set_Priority_Task(self.log_list[self.log_list.index("Priority Task of the Week:"):self.log_list.index("Daily Objective:")])
+            start = "Priority Objectives:"
+            finish = "Special Objectives:"
+            self.WeekObjective.set_Priority_Task(
+                self.log_list[self.log_list.index(start):self.log_list.index(finish)])
         except :
             print("For WeekObjective, Priority_Task is not logged")
-            Authorized = False
+            self.Authorized = False
         try:
-            self.WeekObjective.set_Recursive_Task(self.log_list[self.log_list.index("Daily Objective:"):self.log_list.index("Special Objective: (Dead_Line Required)")])
+            start = "Special Objectives:"
+            finish = "Daily (Recursive) Objectives:"
+            self.WeekObjective.set_Special_Task(self.log_list[self.log_list.index(start):
+                                                                self.log_list.index(finish)])
         except :
             print("For WeekObjective, Recursive_Task is not logged")
-            Authorized = False
+            self.Authorized = False
         try:
-            self.WeekObjective.set_Special_Task(self.log_list[self.log_list.index("Special Objective: (Dead_Line Required)"):self.log_list.index("OKR_Logs")])
+            start = "Daily (Recursive) Objectives:"
+            finish = "ANCHOR"
+            self.WeekObjective.set_Recursive_Task(self.log_list[self.log_list.index(start):self.log_list.index(finish)])
         except :
             print("For WeekObjective, Special_Task is not logged")
-            Authorized = False
+            self.Authorized = False
 
     def week_okr_show(self):
         self.WeekObjective.show()
 
     def log_day(self,n):
-        global Authorized 
         "Get the data for specific day of log; n = number of day in the week"
         idx_head = self.log_list.index("Day " + str(n))
         if n < 7:
@@ -98,17 +128,17 @@ class Load:
             new_day_log.set_Priority_Task(self.log_of_day[self.log_of_day.index("Priority Task:"):self.log_of_day.index("Special OKR:")])
         except ValueError:
             print("For day {}, Priority_Task is not logged".format(n))
-            Authorized = False
+            self.Authorized = False
         try:
             new_day_log.set_Special_Task(self.log_of_day[self.log_of_day.index("Special OKR:"):self.log_of_day.index("Recursive OKR:")])
         except ValueError:
             print("For day {}, Special_Task is not logged".format(n))
-            Authorized = False
+            self.Authorized = False
         try:
             new_day_log.set_Recursive_Task(self.log_of_day[self.log_of_day.index("Recursive OKR:"):self.log_of_day.index("Daily Summary:")])
         except ValueError:
             print("For day {}, Recursive_Task is not logged".format(n))
-            Authorized = False
+            self.Authorized = False
         return new_day_log
 
     def log_all(self):
@@ -148,24 +178,24 @@ class Load:
                 if self.WeekObjective.Priority_Task[i].Objective.split(":")[0] == Objective_ID:
                     self.WeekObjective.Priority_Task[i].progress_show()
     
-    def complete(self,Task_ID,tk_pop = False):
+    def complete(self,Task_ID,tk_pop = False,PRINT = False):
         task_type = Task_ID.split("_")[0]
         Objective_ID = Task_ID.split("_")[1]
         KR_ID = Task_ID.split("_")[2]
         if task_type == "R":
             for i in range(len(self.WeekObjective.Recursive_Task)):
                 if self.WeekObjective.Recursive_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Recursive_Task[i].complete(KR_ID,False,tk_pop = tk_pop)
+                    self.WeekObjective.Recursive_Task[i].complete(KR_ID,False,tk_pop = tk_pop,PRINT=PRINT)
 
         elif task_type == "S":
             for i in range(len(self.WeekObjective.Special_Task)):
                 if self.WeekObjective.Special_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Special_Task[i].complete(KR_ID,tk_pop = tk_pop)
+                    self.WeekObjective.Special_Task[i].complete(KR_ID,tk_pop = tk_pop,PRINT = PRINT)
 
         elif task_type == "P":
             for i in range(len(self.WeekObjective.Priority_Task)):
                 if self.WeekObjective.Priority_Task[i].Objective.split(":")[0] == Objective_ID:
-                    self.WeekObjective.Priority_Task[i].complete(KR_ID, tk_pop = tk_pop)
+                    self.WeekObjective.Priority_Task[i].complete(KR_ID, tk_pop = tk_pop,PRINT = PRINT)
                     
                     
 #@title Day Class {display-mode: "form"}
@@ -238,8 +268,7 @@ class Day:
                     if tasks.KeyResults != {} or progress :
                         print(tasks)
                         if progress:
-                            tasks.progress_show()
-                            print("\n")
+                            pass 
             else:
                 print('Empty')
             
@@ -287,7 +316,7 @@ class okr_task():
             Authorized = False
             print("okr_task KeyResult set up failed, {} has wrong format".format(KeyResult))
 
-    def complete(self,KeyResult_ID,Special=True,tk_pop = False):
+    def complete(self,KeyResult_ID,Special=True,tk_pop = False,PRINT = False):
         from tkinter import messagebox
         if self.unchanged:
             self.num_KR = len(list(self.KeyResults.keys()))
@@ -301,13 +330,17 @@ class okr_task():
             else: 
                 self.PG += 1/(7*self.num_KR)
                 self.KeyResults[KeyResult_ID][1].COUNT += 1
-                bar = progress(self.PG)
+            msg = f"{str(self)}"
             if tk_pop:
                 try:
                     messagebox.showinfo(title = 'Objective Updated', 
-                           message = f"{str(self)}\nUpdated:\n{bar}")
+                           message = msg)
                 except:
                     pass 
+            else:
+                if PRINT:
+                    print(msg)
+            
         except KeyError:
             print("{} no longer belong to this objective".format(KeyResult_ID))
             print("Current Key Results:")
@@ -326,6 +359,8 @@ class okr_task():
             rep += "\n"+ "\t" + k + ":{:60}".format(str(self.KeyResults[k][0]))
             if self.KeyResults[k][1]["COUNT"] > 0:
                 rep += "  |Counts:{}".format(self.KeyResults[k][1].COUNT)
+                
+        rep += '\n\n' + progress(self.PG) + '\n'
         return rep
 
     def get_task_info(self,KeyResult):
@@ -359,6 +394,7 @@ class task():
         
     def set_deadline(self,deadline):
         self.deadline = deadline
+        
     def set_time(self,time):
         self.time = time
 
@@ -408,7 +444,7 @@ class task():
 # -----------------------------------------------------------------------------
 import sys, math
 
-def progress(value,  length=40, title = " ", vmin=0.0, vmax=1.0):
+def progress(value,  length=40, title = " ", vmin=0.0, vmax=1.0, blank = '_'):
     """
     Text progress bar
     Parameters
@@ -442,20 +478,173 @@ def progress(value,  length=40, title = " ", vmin=0.0, vmax=1.0):
     i = int(round(base*math.floor(float(y)/base),prec)/base)
     bar = "█"*x + blocks[i]
     n = length-len(bar)
-    bar = lsep + bar + " "*n + rsep
-
-    sys.stdout.write("\r" + title + bar + " %.1f%%" % (value*100))
-    sys.stdout.flush()
-    
+    bar = lsep + bar + blank*n + rsep    
     return "\r" + title + bar + " %.1f%%" % (value*100)
 
-# In[20]:
+#########
+class Load_Notion(Load):
+    def __init__(self,**kargs):
+        #token,share_link,file_path
+        if 'token' in kargs and 'share_link' in kargs:
+            token = kargs['token']
+            share_link = kargs['share_link']
+            self.set_token(token) 
+            self.set_link(share_link)
+        elif 'file_path' in kargs:
+            file_path = kargs['file_path']
+            Load.__init__(self,file_path)
+         
+    def set_token(self,token):
+        self.token = token
+        
+    def Get_token(self):
+        return self.token 
+    
+    def set_link(self,link):
+        self.page_link = link
+    
+    @staticmethod
+    def Get_ID(link):
+        out = link.split('-')[-1]
+        #print(out)
+        assert len(out) == 32, 'The length of the ID MUST be 32'
+        return out
+
+    def Get_Block_children(self,share_link = None,token = None,block_id = None, retry = 3):
+        assert not all([share_link is None,block_id is None]),'Either Share_link or Block_Id need not to be none'
+        if block_id is None:
+            block_id = self.Get_ID(share_link)
+        #
+        if token is None:
+            token = self.token 
+        header = {'Authorization':f'Bearer {token}','Content-Type':'application/json','Notion-Version':'2021-05-13'}
+        url = f'https://api.notion.com/v1/blocks/{block_id}/children?page_size=100'
+        COMPLETE = False
+        while retry > 0 and not COMPLETE:
+            try:
+                OUT = requests.request(method = 'GET', url = url , headers = header, ).json()
+                COMPLETE = True
+            except:
+                print("Fail to Fetch, Retry in 3 sec")
+                retry -= 1
+                sleep(3) 
+        return  OUT
+    
+    def Fetch_Page(self,share_link):
+        RES1 = self.Get_Block_children(share_link) 
+        #dict_keys(['object', 'results', 'next_cursor', 'has_more'])
+        OUT = {}
+        try:
+            print(f"Status: {RES1['status']}")
+        except:
+            print('Connection Established')
+        for D in  RES1['results']  :
+            try:
+                #Identify if D has toggle:
+                (D['toggle'])
+                #Print Category
+                section = D['toggle']['text'][0]['plain_text'] ### [Section Layer] 
+                print(section) 
+                #print(D['id']) #<-Id of the Category Toggel
+                RES2 = self.Get_Block_children(block_id = D['id'])                        
+                #print(res['results'][0]['id'])
+                list_of_tasks = []
+                for res_goal in RES2['results']: ### [Goal Layer] 
+                    try:
+                        type = res_goal['type']
+                        all_texts = [i['plain_text'] for i in res_goal[type]['text']] 
+                        G_str = Lst_to_str(all_texts)
+                        print("\t"+G_str)
+                        list_of_tasks.append(G_str)
+                        RES3 = self.Get_Block_children(block_id = res_goal['id']) 
+                        for res_kr in RES3['results']: ### [KeyResults Layer] 
+                            type = res_kr['type']
+                            all_texts = [i['plain_text'] for i in res_kr[type]['text']] 
+                            Kr_str = Lst_to_str(all_texts)
+                            print("\t\t"+Kr_str)
+                            list_of_tasks.append(Kr_str)
+                    except Exception as e:
+                        print(f'Error under Goal: {e}')
+                #Eventually
+                OUT[section] = list_of_tasks
+            except Exception as e:
+                print('Unexpected Error:',e) 
+            print(OUT.keys())
+        return OUT
+        
+    def Notion_Load_WeekObjective(self,share_link = None):
+        if share_link is None:
+            share_link = str(self.page_link)
+        self.WeekObjective = Day()
+        try:
+            DICT = self.Fetch_Page(share_link)
+            for Category in DICT:
+                if Category[0] == 'P':
+                    self.WeekObjective.set_Priority_Task(DICT[Category])
+                elif Category[0] == 'S':
+                    self.WeekObjective.set_Special_Task(DICT[Category])
+                elif Category[0] == 'D':
+                    self.WeekObjective.set_Recursive_Task(DICT[Category])
+        except Exception as e:
+            print(f"Load ERROR due to : {e}")
+            messagebox.showwarning('Notion Load ERROR', 'ERROR,Notion Fail to Load.Please check connection and try again later')          
+        
+                
 
 
 if __name__ == '__main__':
-    T = Load('OKRLOG_S2_W10.docx')
-    T.get_week_objective() #Fetch Weekly Plans 
-    T.week_okr_show() #Show the preview
-    T.complete('S_G3-2-99_K1')#Complete One specific Task 
-    T.week_okr_show() #Observe that the progress is being kept track of 
-
+    # path = 'OKRLOG test.docx'
+    # L = Load(path)
+    # L.get_week_objective()
+    # L.week_okr_show()
+    token = 'secret_VvobxKycNDREw5sws3VhfIb5V2MRYLgOKZlAm5a0S7p'
+    share_link = 'https://www.notion.so/TEST-761b88a6d6de48a791654433d0da1c46'
+    
+    Load = Load_Notion(token = token,share_link = share_link)
+    Load.Notion_Load_WeekObjective()
+    Load.week_okr_show()
+    
+    # #Test：
+    # share_link = 'https://www.notion.so/TEST-761b88a6d6de48a791654433d0da1c46'
+    # Load = Load_Notion(token = token,share_link = share_link)
+    # RES1 = Load.Get_Block_children(share_link) 
+    # #dict_keys(['object', 'results', 'next_cursor', 'has_more'])
+    # OUT = {}
+    # try:    
+    #     print(f"Status: {RES1['status']}")
+    # except:
+    #     print('Connection Established')
+    # for D in  RES1['results']  :
+    #     try:
+    #         #Identify if D has toggle:
+    #         (D['toggle'])
+    #         #Print Category
+    #         print(D['toggle']['text'][0]['plain_text']) ### [Section Layer] 
+    #         #print(D['id']) #<-Id of the Category Toggel
+    #         RES2 = Load.Get_Block_children(block_id = D['id'])                        
+    #         #print(res['results'][0]['id'])
+    #         list_of_tasks = []
+    #         for res_goal in RES2['results']: ### [Goal Layer] 
+    #             try:
+    #                 type = res_goal['type']
+    #                 all_texts = [i['plain_text'] for i in res_goal[type]['text']] 
+    #                 G_str = Lst_to_str(all_texts)
+    #                 print("\t"+G_str)
+    #                 list_of_tasks.append(G_str)
+    #                 RES3 = Load.Get_Block_children(block_id = res_goal['id']) 
+    #                 for res_kr in RES3['results']: ### [KeyResults Layer] 
+    #                     type = res_kr['type']
+    #                     all_texts = [i['plain_text'] for i in res_kr[type]['text']] 
+    #                     Kr_str = Lst_to_str(all_texts)
+    #                     print("\t\t"+Kr_str)
+    #                     list_of_tasks.append(Kr_str)
+    #             except Exception as e:
+    #                 print('Error:',e)
+    #         #Eventually
+    #         OUT[D['toggle']['text'][0]['plain_text']] = list_of_tasks
+    #     except Exception as e:
+    #         pass 
+    #
+    #
+    #     print(OUT.items())
+    

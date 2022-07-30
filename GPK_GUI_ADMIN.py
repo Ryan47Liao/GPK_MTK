@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+#Admin Version which requires only Admin PW, NOT accessible from others
 import tkinter as tk
 from tkinter import ttk
 from PIL import ImageTk,Image
@@ -7,8 +8,6 @@ from  tkinter import filedialog
 from tkinter import messagebox
 import os
 import Tetris
-import copy
-import numpy as np
 
 #Gpk Mods 
 from gpk_cache import GPK_Cache
@@ -17,21 +16,18 @@ from gpk_mtk_frame import gpk_mtk_frame
 from gpk_todo_frame import gpk_to_do
 from gpk_archive_frame import gpk_archive
 from gpk_stat_frame import gpk_analysis
-from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning #2021/9/4
+from gpk_weekView_frame import gpk_weekView,gpk_weekPlanning
 from gpk_dashboard_frame import gpk_dash
 from gpk_recurrent import gpk_Recur_frame
 from gpk_Notion_frame import gpk_notion_frame
-from gpk_Misc_frame import gpk_misc #2021/7/24 
-from gpk_D_Reflection_frame import D_Reflection_Frame #2021/7/25
-from gpk_setting import gpk_setting #2021/09/13
 
 class gpk_Shell:
     def __init__(self):
-        self.version = '0.074' #2022/01/10
+        self.ADMIN_CODE = 13705165727
+        self.version = 'ADMIN -0.033'
         self.shell_rt = tk.Tk()
         self.shell_rt.title("GPK_LOGIN")
-        self.shell_rt.geometry('1000x780')
-        self.shell_rt.resizable(False, False) 
+        self.shell_rt.geometry('1100x850')
         self.shell_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.cwd = os.getcwd()
         self.ACC = None
@@ -42,6 +38,7 @@ class gpk_Shell:
             os.makedirs(self.parent_address) 
         except FileExistsError:
             pass
+
                     
         #_________Finally_________#
         #Fetch Cache 
@@ -66,17 +63,13 @@ class gpk_Shell:
     
     def authenticate(self)->bool:
         "Authenticates the user"
-        if self.Profile.username != self.ACC:
-            getattr(messagebox,'showwarning')("Access Denied","You must Load the CORRECT save first") 
+        if self.Profile is None:
+            getattr(messagebox,'showwarning')("Access Denied","You must Load the saved file first.") 
             self.open_profile()
+            return False
         else:
-            if self.Profile is None:
-                getattr(messagebox,'showwarning')("Access Denied","You must Load the saved file first.") 
-                self.open_profile()
-                return False
-            else:
-                return self.Profile.Verified(self.PW) 
-            
+            return self.Profile.Verified(self.PW) 
+        
         
     def gpk_login(self):
         self.ACC = self.acc_entry.get()
@@ -85,7 +78,7 @@ class gpk_Shell:
         except:
             getattr(messagebox,'showwarning')("ERROR","PING must be Digits only!") 
         "If LogIn Successful,open the Main app and destroy the login."
-        if self.authenticate():
+        if self.PW == self.ADMIN_CODE:#self.authenticate():
             #If remember me is toggled 
             if self.remember.get():
                 self.cache.set_info(self.ACC,self.PW)
@@ -181,10 +174,7 @@ the task will then be Archived into the Archive',ddl = ddl)
             self.file_path = path
         print(f"opening save at {self.file_path}")
         INfile = open( self.file_path ,"rb")
-        try:
-            self.Profile = pickle.load(INfile)
-        except:
-            pass
+        self.Profile = pickle.load(INfile)
         INfile.close()
         #Update User Name
         user_name = str(self.file_path).split('.')[0].split("gpk_saves")[-1].split('user_file')[0].strip('/_\\')
@@ -210,64 +200,60 @@ the task will then be Archived into the Archive',ddl = ddl)
         self.frame_Upper = tk.Frame(master = self.shell_rt, bg = 'black')
         self.frame_Upper.configure(height = 500,width = width)
         self.frame_Upper.pack()
-        self.okr_img = Image.open(self.cwd + "/Pictures/OKR_Welcome.jpg").resize((1000,500), Image.ANTIALIAS)
-        self.okr_img = ImageTk.PhotoImage(self.okr_img)
+        self.okr_img = ImageTk.PhotoImage(Image.open(self.cwd + "/Pictures/OKR_Welcome.jpg"))
         self.top_pic = tk.Label(master = self.frame_Upper , image = self.okr_img, anchor = tk.S)
         self.top_pic.pack(fill = tk.BOTH ) 
         
         #ＬＯＷＥＲ　ＦＲＡＭＥ
         self.frame_Lower = tk.Frame(master = self.shell_rt) #, bg = 'orange')
         self.frame_Lower.configure(height = 200,width = width)
-        self.frame_Lower.pack(pady = 12)
+        self.frame_Lower.pack()
         
-        #Spacere 
-        spacer = tk.Label(self.frame_Lower,text = '')
-        spacer.pack(side = tk.LEFT,padx = 20)
         #___________Acc_entry_______________
-        self.acc_info_entry_frame = tk.Frame(master = self.frame_Lower)#,bg = 'blue')
+        self.acc_info_entry_frame = tk.Frame(master = self.frame_Lower)# ,bg = 'blue')
         self.acc_info_entry_frame.configure(height = 50, width = width)
         self.acc_info_entry_frame.pack(ipady = 0, ipadx = 50, expand = 1)
         
         self.acc_label = tk.Label(master = self.acc_info_entry_frame , text = 'Account:')
         self.acc_entry = tk.Entry(master = self.acc_info_entry_frame, width = 30)
-        self.acc_entry.grid(padx = 20, pady = 10, row = 1, column = 2)
-        self.acc_label.grid(padx = 20, pady = 10, row = 1, column = 1)
+        self.acc_entry.grid(padx = 20, pady = 10, row = 0, column = 1)
+        self.acc_label.grid(padx = 20, pady = 10, row = 0, column = 0)
         ##____________pw_entry_________________
         self.pw_entry = tk.Entry(master = self.acc_info_entry_frame, width = 30 )
-        self.pw_label = tk.Label(master = self.acc_info_entry_frame ,text = 'PING:')
-        self.pw_entry.grid(padx = 20,  pady = (5,10), row = 2, column = 2)
-        self.pw_label.grid(padx = 15, pady = (5,10), row = 2, column = 1)
+        self.pw_label = tk.Label(master = self.acc_info_entry_frame ,text = 'Pass Word:')
+        self.pw_entry.grid(padx = 20,  pady = (5,10), row = 1, column = 1)
+        self.pw_label.grid(padx = 15, pady = (5,10), row = 1, column = 0)
         
         
         #___________login_btn_________________
-        self.login_btn_frame = tk.Frame(master = self.frame_Lower)# , bg = 'red' )
+        self.login_btn_frame = tk.Frame(master = self.frame_Lower )#, bg = 'red' )
         self.login_btn_frame.configure(height = 50,width = 1000)
         self.login_btn_frame.pack( ipady = 0, ipadx = 50, expand = 1)
         
         self.img_login = ImageTk.PhotoImage(Image.open(self.cwd + "/Pictures/new_button_login.ico"))
         
         self.login_btn = tk.Button(master = self.login_btn_frame ,image = self.img_login , command = self.gpk_login)
-        self.login_btn.grid(row = 2, column = 5)
+        self.login_btn.grid(row = 1, column = 4)
         
         #___________Remember_Me_Check_Box___________
         self.remember = tk.IntVar()
         self.remember.set(int(self.cache.Re_status()))
         self.rmchbox = tk.Checkbutton(self.login_btn_frame,variable = self.remember,
                                       onvalue=1, offvalue=0)
-        self.rmchbox.grid(row = 1, column = 4)
+        self.rmchbox.grid(row = 0, column = 3)
         self.rmchbox.configure( command = lambda: self.cache.Set_status(self.remember.get()) )
-        self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 1, column = 5)
+        self.rmchbox_label = tk.Label (self.login_btn_frame,text = "Remember Me").grid(row = 0, column = 4)
         
         #__________Register__________________
         self.reg_btn_frame = tk.Frame( self.frame_Lower)#, bg = 'green' )
-        self.reg_btn_frame.configure(height = 50,width = 1000)
+        self.reg_btn_frame.configure(height = 50,width = 500)
         self.reg_btn_frame.pack(padx = 100,side = tk.LEFT, ipady = 10, ipadx = 50, expand = 0)
         self.register_btn = tk.Button(master = self.reg_btn_frame ,text = 'Register', command = self.gpk_reg)
         self.register_btn.pack(side = tk.LEFT)#grid( row = 0 , column = 0, columnspan = 1)
-        spacer = tk.Label(self.reg_btn_frame,text = '')
-        spacer.pack(side = tk.LEFT,padx = 290)
         self.version_label = tk.Label(master = self.reg_btn_frame ,
-                                     text = f"Version: {self.version}").pack(pady = 10, side = tk.RIGHT)
+                                     text = f"""
+                                            \t\t\t\t\t\t Version: {self.version}
+                                            """ ).pack(pady = 10, padx = 100, side = tk.RIGHT)
 
 
 class gpk_Main():
@@ -275,27 +261,14 @@ class gpk_Main():
         self.Profile = Profile
         self.file_path = file_path
         self.gpk_main_rt = tk.Tk()
-        
         self.gpk_main_rt.iconbitmap(os.getcwd() + "\Pictures\GPK_OKR.ico")
         self.gpk_main_rt.option_add('*tearOff', False)
         self.gpk_main_rt.title("GPK_Main")
-        #Deciding Frame
-        base = 100
-        try:
-            auto_size = self.Profile.setting.screen_auto
-        except: #If gpk_setting was not there
-            self.Profile.setting = gpk_setting()
-            auto_size = self.Profile.setting.screen_auto
-        if auto_size:
-            self.Profile.setting.Auto_adjust(self.gpk_main_rt) #Fetch and record window settings 
-        #Fixed Size
-        zoom_ratio = self.Profile.setting.zoom_ratio
-        screen_width = int(self.Profile.setting.screen_width/self.Profile.setting.zoom_ratio)
-        screen_height = int(self.Profile.setting.screen_height/self.Profile.setting.zoom_ratio)
-        geometry = {'height':screen_height,'width':screen_width}
- 
-        self.geometry = {'width':screen_width,'height':screen_height}
-        self.gpk_main_rt.geometry('{}x{}'.format(screen_width,screen_height))
+        base = 120
+        width = base*16
+        height = base*9
+        self.geometry = {'width':width,'height':height}
+        self.gpk_main_rt.geometry('{}x{}'.format(width,height))
         self.FRAMES = []
         
         #_________Finally_________#
@@ -347,38 +320,6 @@ class gpk_Main():
         self.gpk_dash_board.REFRESH_ALL()
         self.call_frame('gpk_dash_board')
         
-    def R_call_view(self,num):
-        self.D_reflect.Call_view(num) 
-        self.call_frame('D_reflect')
-        
-    def toggle_FS(self):
-            if self.FS.get():#Full Screen
-                self.gpk_main_rt.attributes("-fullscreen", True) 
-            else:
-                self.gpk_main_rt.attributes("-fullscreen", False) 
-            #Finally Remember the setting:
-            self.Profile.setting.FS_status = self.FS.get()
-            self.profile_save()
-            
-    def Res_Change(self,auto=False):#2021/10/25'
-        if auto:
-            self.Profile.setting.Auto_adjust(root = self.gpk_main_rt)
-        else:
-            res = self._res.get()
-            w = int(res.split('x')[0])
-            h = int(res.split('x')[1])
-            self.Profile.setting.change_size(w,h)
-            self.profile_save()
-            print(f'Change to Resolution: {w}x{h}')
-        self.gpk_main_rt.destroy()
-        self.__init__(self.Profile , self.file_path)
-        
-    def Zoom_Change(self):
-        self.Profile.setting.zoom_ratio = int(float(self._zoom.get()[:-1])/100)
-        self.profile_save()
-        self.gpk_main_rt.destroy()
-        self.__init__(self.Profile , self.file_path)
-        
     def _draw(self):
         #++++++++++++++++++++++++++ＭＥＮＵ++++++++++++++++++++++++++++++++++++++#
         # Build a menu and add it to the root frame.
@@ -393,34 +334,12 @@ class gpk_Main():
         #_________________Menu->Today________________________
         menu_today = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_today, label='Today')
-        menu_today.add_command(label='OKR_Todo', command = lambda: self.call_frame('gpk_todo'))
+        menu_today.add_command(label='To_Do_List', command = lambda: self.call_frame('gpk_todo'))
 
         self.gpk_todo = gpk_to_do(self.gpk_main_rt,self.geometry,
                                   callback = self.Profile_call_back,MAIN = self)
         self.FRAMES.append("gpk_todo")
-        #gpk_misc
-        menu_today.add_command(label='MISC', command = lambda: self.call_frame('gpk_misc'))
-
-        self.gpk_misc = gpk_misc(self.gpk_main_rt,self.geometry,
-                                  callback = self.Profile_call_back,MAIN = self)
-        self.FRAMES.append("gpk_misc")
         
-        #gpk_reflection
-        menu_D_REF = tk.Menu(menu_today)
-        menu_today.add_cascade(menu=menu_D_REF, label='Reflection')
-        self.D_reflect = D_Reflection_Frame(self.gpk_main_rt,self.geometry,
-                                  callback = self.Profile_call_back,Main = self)
-        
-        self.FRAMES.append("D_reflect")
-        #
-        menu_D_REF.add_command(label='How did I spent my time today? ', 
-                               command = lambda: self.R_call_view(1))
-        menu_D_REF.add_command(label='How was my performance? ', command = lambda: self.R_call_view(2))
-        menu_D_REF.add_command(label='How did I contribute to my Goals? ', command = lambda: self.R_call_view(3))
-        menu_D_REF.add_command(label='Efficiency adjustment ', command = lambda: self.R_call_view(4))
-        menu_D_REF.add_command(label='Orientation adjustment ', command = lambda: self.R_call_view(5))
-
-
         #_________________Menu->WEEK________________________
         menu_Week = tk.Menu(menu_bar)
         menu_bar.add_cascade(menu=menu_Week, label='Week')
@@ -462,7 +381,7 @@ class gpk_Main():
         menu_bar.add_cascade(menu=menu_OKR, label='OKR')
         menu_OKR.add_command(label='OKR Settings', command = lambda: self.call_frame('gpk_okr'))
         
-        self.gpk_okr = gpk_okr(self.gpk_main_rt)        
+        self.gpk_okr = gpk_okr(self.gpk_main_rt)
         self.FRAMES.append("gpk_okr")
         
         #_________________Menu->Add on________________
@@ -481,49 +400,10 @@ class gpk_Main():
                
         #_________________Menu->Exit________________________
         Exit = tk.Menu(menu_bar)
-        menu_bar.add_cascade(menu=Exit, label='Setting')
-                #Full Screen 2021.9.6
-        try:
-            self.FS = tk.BooleanVar()
-            status = self.Profile.setting.FS_status
-            self.FS.set(status)
-        except:
-            self.Profile.setting = gpk_setting()
-            self.FS.set(False)
-            self.profile_save()
-        if self.FS.get():
-            self.gpk_main_rt.attributes("-fullscreen", True) 
-        Exit.add_checkbutton(label = 'Full Screen', onvalue=1, offvalue=0, variable=self.FS,
-                             command = self.toggle_FS)
-                #Screen Size: 2021.10.25
-        Screen_Setting = tk.Menu(Exit)
-        Exit.add_cascade(menu=Screen_Setting, label=f'Resolution')
-        self.Profile.setting.Fetch_Resolutions()
-        
-        _count = 0
-        self._res = tk.StringVar()
-        self._res.set(f'{self.Profile.setting.screen_width} x {self.Profile.setting.screen_height}')
-        for res in self.Profile.setting.res_opt:
-            Screen_Setting.add_radiobutton(label= res, variable = self._res,
-                                           command = self.Res_Change )
-        Screen_Setting.add_radiobutton(label= 'Auto', command = lambda: self.Res_Change(auto = True))
-                #Zoom Level: 2021.10.25
-        self._zoom = tk.StringVar()
-        self._zoom.set(str(self.Profile.setting.zoom_ratio*100)+'%')
-        Zoom_Setting = tk.Menu(Exit)
-        Exit.add_cascade(menu=Zoom_Setting, label=f'Zoom In')
-        for zoom in np.linspace(100,250,7):
-            Zoom_Setting.add_radiobutton(label= str(zoom)+'%', variable = self._zoom,
-                                           command = self.Zoom_Change )
-            
-            
+        menu_bar.add_cascade(menu=Exit, label='Exit')
             
         Exit.add_command(label='Main Menu', command = self.RETURN)
         Exit.add_command(label='QUIT', command =  self.gpk_main_rt.destroy)
-        
-
-        
-
         
         #++++++++++++++++++++++++++DashBoard(HOME)++++++++++++++++++++++++++++++++++++++#
         # self.gpk_dash_board = gpk_dash(self.gpk_main_rt,self.geometry,callback = self.Profile_call_back)
@@ -541,12 +421,8 @@ class gpk_okr(tk.Frame):
         self._draw()
         
     def _draw(self):
-        #Label:
-        self.img = Image.open(os.getcwd() + '/Pictures/UnderDev.jpg')
-        # self.Notion_img = self.Notion_img.resize((1000,500), Image.ANTIALIAS)
-        self.img = ImageTk.PhotoImage(self.img)
-        self.Lab = tk.Label(self,image = self.img)
-        self.Lab.pack()
+        self.to_dos = tk.Button(master = self, text = 'WELCOME　to gpk_week')
+        self.to_dos.pack()
 
 class gpk_store(tk.Frame):
     def __init__(self,root):
@@ -560,12 +436,6 @@ class gpk_store(tk.Frame):
         
         
     def _draw(self):
-        #Label:
-        self.img = Image.open(os.getcwd() + '/Pictures/UnderDev.jpg')
-        # self.Notion_img = self.Notion_img.resize((1000,500), Image.ANTIALIAS)
-        self.img = ImageTk.PhotoImage(self.img)
-        self.Lab = tk.Label(self,image = self.img)
-        self.Lab.pack()
         #Button
         self.Tetris_open = tk.Button(master = self, text = 'Tetris',command = self.Tetris_start)
         self.Tetris_open.pack()

@@ -159,7 +159,8 @@ def now(L,n=7):
 def constant_line(n):
     return [n,n,n,n,n,n,n]
 
-def score_plt(Lst,Save=False,grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'b'),"A":(85,'g'),"S":(95,'m')}):
+def score_plt(Lst,Save=False,path = None,
+              grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'b'),"A":(85,'g'),"S":(95,'m')}):
     from matplotlib.pyplot import figure
     figure(figsize=(8,8))
     Trend = trend(list(Lst))
@@ -176,14 +177,11 @@ def score_plt(Lst,Save=False,grade_cutoff = {"D":(55,'r'),"C":(65,'y'),"B":(75,'
     plt.legend()
     plt.title("Score Projection")
     if Save:
-        plt.savefig("fig_score.png")
+        plt.savefig(path)
     else:
         plt.show()
     
-
-def S_P(data,date,Save=False):
-    "Plot Score Projection for the week"
-    score_plt(Score_trend(data,date),Score_trend(data,date),Save)
+    
     
 ####NEW####2021/7/5
 def yesterday(date_str):
@@ -208,19 +206,29 @@ def Next_Sunday(today = None):
     while date.isocalendar()[2] != 7:
         date = tmr(str(date))
     return (date)
+
+def NULL_WO(Loaded , set_to = 0 ):
+    OUT = copy.deepcopy(Loaded)
+    sections = ['Priority_Task','Special_Task','Recursive_Task']
+    for sec in sections:
+        for okr_task in eval(f"OUT.WeekObjective.{sec}"):
+            okr_task.PG = set_to
+    return OUT
     
-def Get_Scores(df,Loaded,today = None, RETURN_null = False, Auto_fill = False):
+def Get_Scores(df,Loaded,today = None, RETURN_null = False, Auto_fill = False, target = None ):
     "Takes in a df which is usually the PROFILE.todos.Archive,Out Puts"
     Analysis = DF_Search(df)
     #1.Find the date of the LAST Monday, could be today
     start = str(Last_monday(today))
     end = str(Next_Sunday(today))
-    print(start)
-    print(end)
+    print(f"calling:Get_Score,from {start} to {end}")
     #2.Isolate the data
     df_new = Analysis.SEARCH('date_done',predict = lambda dt: DATE(dt) >= DATE(start) and  DATE(dt) <= DATE(end))
     #3.Sort the data by date_done:
-    df_new = df_new.sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = True)
+    try:
+        df_new = df_new.sort_values(by = 'date_done', key = lambda L: [DATE(i) for i in L],ascending = True)
+    except KeyError: #Archive is empty 
+        df_new = pd.DataFrame() 
     #4.Get a dictionary with key = date_done, values = list of tasks completed that day
     DICT = {}
     if Auto_fill:
@@ -242,21 +250,17 @@ def Get_Scores(df,Loaded,today = None, RETURN_null = False, Auto_fill = False):
             DICT[row['date_done']].append( row['ID'] )
 
     #5.Create a NULL version of the Load, defaulting all PG for ALL tasks:
-    def NULL_WO(Loaded , set_to = 0 ):
-        OUT = copy.deepcopy(Loaded)
-        sections = ['Priority_Task','Special_Task','Recursive_Task']
-        for sec in sections:
-            for okr_task in eval(f"OUT.WeekObjective.{sec}"):
-                okr_task.PG = set_to
-        return OUT
-
     WO_null = NULL_WO(Loaded)
     #6.For each day, complete all tasks and collect score
     OUT = {}
     for day in DICT:
-        for task_id in DICT[day]:
-            WO_null.complete(task_id)
-        OUT[day] = score_okr(WO_null)
+        if target is None or DATE(day) < DATE(target):
+            for task_id in DICT[day]:
+                WO_null.complete(task_id)
+            OUT[day] = score_okr(WO_null)
     if RETURN_null:
-        return WO_null
+        return WO_null,DICT
+    
+    if OUT == {}:
+        OUT = {start : 0 } #In the case when it's new week
     return OUT

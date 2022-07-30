@@ -38,7 +38,7 @@ class Profile_Test:
 
 class gpk_mtk_frame(tk.Frame):
     def __init__(self,root,call_back=None):
-        super().__init__(bg = 'purple')
+        super().__init__()
         self.root = root
         
         if call_back is not None:
@@ -106,6 +106,12 @@ class gpk_mtk_frame(tk.Frame):
         self.call_back(Profile,Update = True)
         
     def _draw(self):
+        #Welcome Pic
+        #MeisterTask.png
+        self.MeisterTask_img = Image.open(os.getcwd() + '/Pictures/MeisterTask.png')
+        self.MeisterTask_img = ImageTk.PhotoImage(self.MeisterTask_img)
+        self.Lab = tk.Label(self,image = self.MeisterTask_img)
+        self.Lab.pack()
         #Token Set Up
         self.Key_label = tk.Label(master = self,text = 'Personal access tokens:')
         self.Key_entry = tk.Entry(master = self)

@@ -57,22 +57,36 @@ class PROFILE:
         else:
             return False
 
-    def Save(self,file_path)->None:
+    def Save(self,file_path)->None: #Updated 2021/09/13 for safe saves
         if file_path.split(".")[-1] == "gpk":
-            OUTfile = open(file_path ,"wb")
-            pickle.dump(self,OUTfile)
-            OUTfile.close()
+            #TEST SAVE:
+            with open('test_save','wb') as OUTfile:
+                try:
+                    pickle.dump(self,OUTfile)
+                    __Allow_save = True
+                except:
+                    __Allow_save = False
+                    import tkinter as tk
+                    tk.messagebox.showwarning(title = 'WARNING!!!Save Fatal Error!!!'
+                                              , message = 'CLOSE PROGRAM IMMEDIATELY or YOU MAY LOSE ALL SAVEs')
+            #ACTUAL SAVE
+            with open(file_path ,"wb") as OUTfile:
+                pickle.dump(self,OUTfile)
         else:
             print("Error.File must be gpk file.")
-            
+            tk.messagebox.showwarning(title = 'Format Error'
+                                              , message = 'File must be gpk file.')
         
 
 class Gpk_ToDoList:
     def __init__(self):
+        self.Archive = pd.DataFrame()
+        self._todo_init()
+
+    def _todo_init(self):
         self.todos = pd.DataFrame({"ID":[ ],"TaskName":[ ],"Reward":[ ],
                             "Time":[ ],"Difficulty":[ ],
                             "ObjectID":[ ],"KeyResult ID":[ ],"Task Category":[ ]})
-        self.Archive = pd.DataFrame()
         self.task_descriptions = {}
     
     def reset_des(self):
@@ -107,8 +121,11 @@ class Gpk_ToDoList:
             self.todos = self.todos.append(task, ignore_index=True)
             
     def add_gpkTask(self,Gtask):
-        #Since Gtask has no Deadline,Add it as tmr 
-        ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
+        try:
+            ddl = str(DATE(Gtask.Deadline))
+        except:
+            #If Gtask has no Deadline, Add it as tmr 
+            ddl = str((datetime.datetime.now()+ datetime.timedelta(days = 1)).date())
         self.add(task_name = Gtask.name,task_ID = Gtask.ID,
                  task_time = float(Gtask.Time) ,
                  task_diff = float(Gtask.Difficulty),
@@ -117,6 +134,8 @@ class Gpk_ToDoList:
     
     def Reward(self,time,difficulty):
         "Return Rewards Based on Time and Difficulty"
+        time = float(time)
+        difficulty = float(difficulty)
         time_lower_bound = 0.35
         time_upper_bound = 5
         difficulty_upper_bound = 10
@@ -128,7 +147,11 @@ class Gpk_ToDoList:
             difficulty = difficulty_upper_bound
         difficulty = abs(difficulty)
         reward = 3*(time**0.6*difficulty**0.4) + random.choice([-0.5,0,0.5,1,1.5,2])
-        return(round(reward))
+        try:
+            out = round(reward)
+        except:
+            out = 0
+        return(out)
     
     def idx_reset(self,df):
         df = df.reset_index()
@@ -160,7 +183,7 @@ class Gpk_ToDoList:
         self.delete(task_ID)
         self.add(task_name,task_ID,task_time,task_diff,task_des,ddl)
         
-    def complete(self,task_ID):
+    def complete(self,task_ID,Quadrant:int = 1):
         time_stamp = str(datetime.datetime.now())
         date_today = str(datetime.datetime.now().date())    
         week_day_today = str(datetime.datetime.now().weekday())
@@ -172,6 +195,13 @@ class Gpk_ToDoList:
             og_task.insert(11,"description",[self.task_descriptions[task_ID]])
         except:
             pass
+#***0.04:
+    ##Introducing Q4 Analysis 
+        #1.If In Current Load, Add as Q2 
+        og_task.insert(12,"Quadrant",Quadrant)
+        #2.If NOT In Current Load, Add as Q1 
+        #3. Q3/4 are not recorded here 
+##END###
         self.Archive = self.Archive.append(og_task)
         self.Archive = self.idx_reset(self.Archive)
         self.delete(task_ID)
@@ -196,7 +226,11 @@ class GPk_Mtk_todoList(Gpk_ToDoList,GPK_MTK_Plan):
             
     
     #From MTK -> GPK        
-
+class GPk_Notion_todoList(Gpk_ToDoList,GPK_MTK_Plan):
+    def __init__(self,token = None,project_id=None):
+        Gpk_ToDoList.__init__(self)
+        GPK_MTK_Plan.__init__(self,api_token = token,project_id=project_id)
+        
 class OKR_Plan:
     def __inti__(self):
         pass

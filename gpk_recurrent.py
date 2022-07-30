@@ -4,7 +4,9 @@ from GPK_PROFILE import Gpk_ToDoList
 from Plan_load import *
 from random import randint
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk,messagebox
+from PIL import ImageTk,Image
+import os
 
 class gpk_Recurrent(Gpk_ToDoList):
     "A Class That Manages Recurrent Tasks"
@@ -55,12 +57,13 @@ class gpk_Recurrent(Gpk_ToDoList):
     
 
 class gpk_Recur_frame(tk.Frame):
-    def __init__(self,root,geometry,callback  = None):
+    def __init__(self,root,geometry,callback  = None, MAIN = None):
         super().__init__()
         self.root = root
         self.callback = callback
         self.height = geometry['height']
         self.width = geometry['width']
+        self.Main = MAIN
         
         try:
             Profile = self.callback(Return = True)
@@ -73,7 +76,11 @@ class gpk_Recur_frame(tk.Frame):
         # Loaded = Load('OKRLOG_S3_W1.docx')
         # Loaded.get_week_objective() #Fetch Weekly Plans 
         ### TEST
-        self.Recur_Fetch() #Loaded
+        try:
+            self.Recur_RESET() #Loaded
+        except:
+            print("[gpk_Recur_frame.__init__] Error: Fail to load recursive tasks")
+            pass 
         #     #
         # Plan = Fetch_plan_null(Loaded,'Recursive_Task')
         # for Gtask in Plan['Inbox']:
@@ -82,20 +89,58 @@ class gpk_Recur_frame(tk.Frame):
         #Finally 
         self._draw()
         
-    def Recur_Fetch(self, Loaded = None):
-        if Loaded is None:
-            Profile = self.callback(Return = True)
-            Loaded = Profile.todos.Load
-        for Gtask in Fetch_plan_null(Loaded,'Recursive_Task')['Inbox']:
-            self.RECUR.add_gpkTask(Gtask)
+    def Recur_RESET(self,RESET = False,Need_Fetch = False):
+        #Reset the Recur Class by Fetching from the NEW LOAD 
+        Profile = self.callback(Return = True)
+        #Check if initialized:
+        if RESET:
+            Profile.gpk_Recur = gpk_Recurrent()
+            Need_Fetch = True
+        try:
+            print(Profile.gpk_Recur)
+        except AttributeError:
+            Profile.gpk_Recur = gpk_Recurrent()
+            Need_Fetch = True
+        finally:
+            self.RECUR = Profile.gpk_Recur
+        if Need_Fetch:
+            self.Recur_Fetch(Profile.todos.Load)
+        #Finally 
+        self.callback(Profile,Update = True)
         
-    def Refresh(self,event):
+    def Recur_Fetch(self, Loaded = None):
+        #Fetch All Recursive tasks from the current Load under Profile.todos 
+        try:
+            if Loaded is None:
+                Profile = self.callback(Return = True)
+                try: 
+                    Loaded = Profile.todos.Load
+                except AttributeError:
+                    Loaded = None
+            for Gtask in Fetch_plan_null(Loaded,'Recursive_Task')['Inbox']:
+                self.RECUR.add_gpkTask(Gtask)
+        except:
+            print("Fail to Fetch Recurrent Task")
+        
+    def Refresh_txt(self,event):#Refresh texts 
         ID = self.CB.get()
         days = self.RECUR.todos[
             self.RECUR.todos['ID'] == ID]['Recur_At'] 
         self.text_update()
         self.ckbox_update(list(days)[0])
         
+    def Refresh_cb(self):
+        #Refresh the CB Box Based on current Profile
+        Profile = self.callback(Return = True)
+        Option = list(Profile.gpk_Recur.todos.ID)
+        print(f"Options refeshed with: \n{Option}")
+        self.CB.config(values = Option)
+                
+    def Ref(self, RESET = False, Need_Fetch = False):#Refresh Com Box
+        self.Recur_RESET(RESET = RESET , Need_Fetch = Need_Fetch) 
+        self.Refresh_cb()
+
+    
     def text_update(self):
         ID = self.CB.get()
         df = self.RECUR.todos[self.RECUR.todos['ID'] == ID]
@@ -117,14 +162,36 @@ class gpk_Recur_frame(tk.Frame):
             if eval(f"self.select_{day}.get() == 1"):
                 OUT.add(day)
         return OUT 
+    
+    def _save(self):
+        Profile = self.callback(Return = True)
+        Profile.gpk_Recur = self.RECUR 
+        self.callback(Profile,Update = True)
             
     def SAVE(self):
         days = self.fetch_days()
         self.RECUR.Modify_Recur(self.CB.get(), days)
         #Update Profile 
+        self._save()
+        
+    def ADD(self):
         Profile = self.callback(Return = True)
-        Profile.gpk_Recur = self.RECUR 
+        Profile.todos.add(task_name = 'Name of the Recursive Task',task_ID = 'R_G0-0_K0',task_time = 1,
+                          task_diff = 1,task_des = 'After Submission, task will be added as a Recursive task that recurs on specific days')
         self.callback(Profile,Update = True)
+        self.Main.gpk_todo.todo_tree_update()
+        #Finally Redirect 
+        self.callback(call_frame_name = 'gpk_todo')
+        
+        
+    def DEL(self):
+        ID = self.CB.get()
+        if messagebox.askyesno(f"Deleting Task", f"Are you sure to delete task {ID}?"):
+            self.RECUR.delete(ID)
+            self._save()
+            self.Refresh_cb()
+        
+        
         
             
     def _draw(self):
@@ -138,7 +205,7 @@ class gpk_Recur_frame(tk.Frame):
         ## Com Box
         Option = list(self.RECUR.todos.ID)
         self.CB = ttk.Combobox(self.LeftFrame, values = Option)
-        self.CB.bind("<<ComboboxSelected>>", self.Refresh)
+        self.CB.bind("<<ComboboxSelected>>", self.Refresh_txt)
         self.CB.grid(row = 0, column = 1)
         ## Task Info Text 
         self.Task_Info = tk.Text(self.LeftFrame, height =30, width = 50, 
@@ -150,18 +217,30 @@ class gpk_Recur_frame(tk.Frame):
         self.RightFrame.pack(side=tk.LEFT,fill = 'both')
         ## Days Check_Boxes 
         spacer = tk.Label(self.RightFrame,text = "")
-        spacer.pack(pady = 20)
+        spacer.grid(row = 0, column = 0,pady = 20)
         self.ND = {1:'monday',2:'tuesday',3:'wednesday',4:'thursday',5:'friday',6:'saturday',7:'sunday'}
         self.DN = {v:k for k,v in self.ND.items()}
+        
+        row = 1
+
         ## Save 
         for day in self.ND:
+            row += 1 
             exec(f"self.select_{day} = tk.IntVar()")
             exec(f"self.ckbox_{day} = tk.Checkbutton(master = self.RightFrame, text=self.ND[day], variable = self.select_{day})")
-            eval(f"self.ckbox_{day}.pack(padx = 10,pady = 10)")
+            eval(f"self.ckbox_{day}.grid(row = {row}, column = 0,padx = 10,pady = 10)")
         self.ckbox_update()
         
+        #Add Btn ->Redirect to the todos with a Recursive Task initialized 
+        self.Add_btn = tk.Button(self.RightFrame,text = 'Add', command = self.ADD, font = ('times new roman',14))
+        self.Add_btn.grid(row = row +1 , column = 0 ,padx = 10,pady = 10)
+        #Delete Btn 
+        self.delete_btn = tk.Button(self.RightFrame,text = 'Delete', command = self.DEL, font = ('times new roman',14))
+        self.delete_btn.grid(row = row +2 , column = 0 ,padx = 10,pady = 10)
+        #Save Btn
         self.save_btn = tk.Button(self.RightFrame,text = 'Save', command = self.SAVE, font = ('times new roman',14))
-        self.save_btn.pack(padx = 10,pady = 20)
+        self.save_btn.grid(row = row +3 , column = 0 ,padx = 10,pady = 10)
+
         
 def SET_RT():
     root = tk.Tk()
